@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spotify Search</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <nav class="menu" aria-label="Primary">
+        <a href="index.html" class="active">Search</a>
+        <a href="queue.html">Waiting List</a>
+        <a href="session.html">Session</a>
+      </nav>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Spotify Web API Demo</p>
+          <h1>Search tracks, albums, and artists</h1>
+          <p class="lede">
+            Connect with Spotify, then search for songs, albums, or artists.
+            Results include cover art, title, and artist name.
+          </p>
+        </div>
+      </header>
+
+      <section class="search">
+        <form id="search-form">
+          <input
+            id="query"
+            type="search"
+            placeholder="Search for a song, album, or artist"
+            autocomplete="off"
+          />
+          <button class="primary" type="submit">Search</button>
+        </form>
+        <p class="status" id="status-text">Checking connection…</p>
+        <p class="subtle" id="search-hint">Connect first to enable search.</p>
+      </section>
+
+      <section class="results">
+        <div class="grid" id="results-grid"></div>
+      </section>
+    </main>
+
+    <template id="card-template">
+      <article class="card">
+        <div class="cover">
+          <img alt="" />
+        </div>
+        <div class="card-body">
+          <p class="meta"></p>
+          <h3></h3>
+          <p class="artist"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>

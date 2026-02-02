@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Waiting List</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <nav class="menu" aria-label="Primary">
+        <a href="index.html">Search</a>
+        <a href="queue.html" class="active">Waiting List</a>
+        <a href="session.html">Session</a>
+      </nav>
+
+      <header class="queue-hero">
+        <div>
+          <p class="eyebrow">Queue</p>
+          <h1>Now playing & waiting list</h1>
+          <p class="lede">
+            Keep an eye on the current track and everything lined up next.
+          </p>
+        </div>
+        <div class="panel">
+          <h2>Status</h2>
+          <p class="status" id="playback-status">Loading…</p>
+          <p class="hint" id="playback-hint"></p>
+        </div>
+      </header>
+
+      <section class="queue-section">
+        <h2>Now playing</h2>
+        <div id="now-playing"></div>
+      </section>
+
+      <section class="queue-section">
+        <div class="queue-header">
+          <div>
+            <h2>Up next (Playlist waiting list)</h2>
+            <p class="subtle" id="queue-status"></p>
+          </div>
+          <div class="queue-controls">
+            <label class="field">
+              <span>Waiting list playlist</span>
+              <select id="playlist-select"></select>
+            </label>
+            <button class="ghost" id="create-playlist-btn" type="button">
+              Create waiting list playlist
+            </button>
+          </div>
+        </div>
+        <form class="queue-search" id="queue-search-form">
+          <label class="field">
+            <span>Add tracks</span>
+            <input
+              id="queue-search-input"
+              type="search"
+              placeholder="Search tracks to add"
+              autocomplete="off"
+            />
+          </label>
+          <button class="primary" type="submit">Search</button>
+        </form>
+        <div class="queue-results" id="queue-results"></div>
+        <div class="queue-list" id="queue-list"></div>
+      </section>
+    </main>
+
+    <template id="queue-card">
+      <article class="queue-card">
+        <div class="cover">
+          <img alt="" />
+        </div>
+        <div class="queue-body">
+          <p class="meta"></p>
+          <h3></h3>
+          <p class="artist"></p>
+        </div>
+      </article>
+    </template>
+
+    <template id="search-card">
+      <article class="queue-card">
+        <div class="cover">
+          <img alt="" />
+        </div>
+        <div class="queue-body">
+          <p class="meta"></p>
+          <h3></h3>
+          <p class="artist"></p>
+        </div>
+        <button class="ghost" type="button">Add</button>
+      </article>
+    </template>
+
+    <script src="queue.js"></script>
+  </body>
+</html>

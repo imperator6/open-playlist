@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Session</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <nav class="menu" aria-label="Primary">
+        <a href="index.html">Search</a>
+        <a href="queue.html">Waiting List</a>
+        <a href="session.html" class="active">Session</a>
+      </nav>
+
+      <header class="queue-hero">
+        <div>
+          <p class="eyebrow">Session</p>
+          <h1>Manage your Spotify connection</h1>
+          <p class="lede">
+            Review session status, see expiry times, and reconnect if needed.
+          </p>
+        </div>
+        <div class="panel" id="auth-panel">
+          <h2>Connect</h2>
+          <p class="hint">
+            This app uses a small backend so your Spotify credentials never
+            touch the browser.
+          </p>
+          <div class="actions">
+            <button id="connect-btn" class="primary">Connect Spotify</button>
+            <button id="clear-btn" class="ghost">Disconnect</button>
+          </div>
+          <p class="status" id="status-text">Not connected</p>
+          <p class="error" id="error-text" role="alert"></p>
+          <p class="hint">
+            Set `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` on the server,
+            then run `node server.js`.
+          </p>
+        </div>
+      </header>
+
+      <section class="queue-section">
+        <h2>Session details</h2>
+        <div class="session-grid">
+          <div class="panel">
+            <p class="meta">Status</p>
+            <p class="session-value" id="session-status">Loading…</p>
+            <p class="hint" id="session-status-hint"></p>
+          </div>
+          <div class="panel">
+            <p class="meta">Token expires</p>
+            <p class="session-value" id="session-expiry">—</p>
+            <p class="hint" id="session-expiry-relative"></p>
+          </div>
+          <div class="panel">
+            <p class="meta">Session info</p>
+            <ul class="session-list" id="session-info"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="session.js"></script>
+  </body>
+</html>
