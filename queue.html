@@ -45,8 +45,8 @@
               <span>Waiting list playlist</span>
               <select id="playlist-select"></select>
             </label>
-            <button class="ghost" id="create-playlist-btn" type="button">
-              Create waiting list playlist
+            <button class="primary" id="play-playlist-btn" type="button">
+              Start playlist on Spotify
             </button>
           </div>
         </div>
@@ -61,7 +61,11 @@
             />
           </label>
           <button class="primary" type="submit">Search</button>
+          <button class="ghost" id="clear-search-btn" type="button">
+            Clear results
+          </button>
         </form>
+        <div class="queue-placement" id="queue-placement"></div>
         <div class="queue-results" id="queue-results"></div>
         <div class="queue-list" id="queue-list"></div>
       </section>
@@ -69,6 +73,7 @@
 
     <template id="queue-card">
       <article class="queue-card">
+        <span class="activity" aria-hidden="true"></span>
         <div class="cover">
           <img alt="" />
         </div>
@@ -76,6 +81,14 @@
           <p class="meta"></p>
           <h3></h3>
           <p class="artist"></p>
+        </div>
+        <div class="queue-actions">
+          <button class="ghost" data-action="before" type="button">
+            Add before
+          </button>
+          <button class="ghost" data-action="after" type="button">
+            Add after
+          </button>
         </div>
       </article>
     </template>
@@ -90,7 +103,7 @@
           <h3></h3>
           <p class="artist"></p>
         </div>
-        <button class="ghost" type="button">Add</button>
+        <button class="ghost" type="button">Place</button>
       </article>
     </template>
 

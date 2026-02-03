@@ -4,10 +4,12 @@ const nowPlaying = document.getElementById("now-playing");
 const queueList = document.getElementById("queue-list");
 const queueCardTemplate = document.getElementById("queue-card");
 const queueStatus = document.getElementById("queue-status");
+const queuePlacement = document.getElementById("queue-placement");
 const playlistSelect = document.getElementById("playlist-select");
-const createPlaylistBtn = document.getElementById("create-playlist-btn");
+const playPlaylistBtn = document.getElementById("play-playlist-btn");
 const searchForm = document.getElementById("queue-search-form");
 const searchInput = document.getElementById("queue-search-input");
+const clearSearchBtn = document.getElementById("clear-search-btn");
 const searchResults = document.getElementById("queue-results");
 const searchTemplate = document.getElementById("search-card");
 
@@ -19,6 +21,9 @@ let currentPlaylistId = null;
 let playlistTracks = [];
 let isDragging = false;
 let isReordering = false;
+let placementTrack = null;
+let defaultPlaylistId = null;
+let currentPlaybackId = null;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -28,6 +33,10 @@ function setQueueStatus(message, showSaving) {
   queueStatus.textContent = message || "";
 }
 
+function setPlacementMessage(message) {
+  queuePlacement.textContent = message || "";
+}
+
 function formatArtists(artists = []) {
   return artists.map((artist) => artist.name).join(", ");
 }
@@ -35,6 +44,7 @@ function formatArtists(artists = []) {
 function parseTrack(track) {
   if (!track) return null;
   return {
+    id: track.id,
     title: track.name,
     artist: formatArtists(track.artists),
     image: track.album?.images?.[0]?.url || "",
@@ -42,13 +52,14 @@ function parseTrack(track) {
   };
 }
 
-function createQueueCard(item, label, index) {
+function createQueueCard(item, label, index, isPlaying) {
   const node = queueCardTemplate.content.cloneNode(true);
   const card = node.querySelector(".queue-card");
   const img = node.querySelector("img");
   const meta = node.querySelector(".meta");
   const title = node.querySelector("h3");
   const artist = node.querySelector(".artist");
+  const actions = node.querySelector(".queue-actions");
 
   img.src = item.image;
   img.alt = item.title;
@@ -57,8 +68,24 @@ function createQueueCard(item, label, index) {
   artist.textContent = item.artist;
 
   card.dataset.index = String(index);
-  card.draggable = true;
+  card.draggable = !placementTrack;
   card.classList.add("no-action");
+
+  if (isPlaying) {
+    card.classList.add("is-playing");
+  }
+
+  if (placementTrack) {
+    card.classList.add("placement-mode");
+    card.classList.remove("no-action");
+    actions
+      .querySelector('[data-action="before"]')
+      .addEventListener("click", () => placeTrackAt(index, "before"));
+    actions
+      .querySelector('[data-action="after"]')
+      .addEventListener("click", () => placeTrackAt(index, "after"));
+  }
+
   attachDragHandlers(card);
 
   return node;
@@ -80,7 +107,8 @@ function createSearchCard(item) {
   artist.textContent = item.artist;
 
   card.classList.remove("no-action");
-  button.addEventListener("click", () => addTrackToPlaylist(item.uri));
+  button.textContent = "Place";
+  button.addEventListener("click", () => enterPlacementMode(item));
 
   return node;
 }
@@ -93,6 +121,7 @@ function clearDropTargets() {
 
 function attachDragHandlers(card) {
   card.addEventListener("dragstart", (event) => {
+    if (placementTrack) return;
     isDragging = true;
     card.classList.add("dragging");
     event.dataTransfer.effectAllowed = "move";
@@ -106,6 +135,7 @@ function attachDragHandlers(card) {
   });
 
   card.addEventListener("dragover", (event) => {
+    if (placementTrack) return;
     event.preventDefault();
     clearDropTargets();
     card.classList.add("drop-target");
@@ -117,6 +147,7 @@ function attachDragHandlers(card) {
   });
 
   card.addEventListener("drop", (event) => {
+    if (placementTrack) return;
     event.preventDefault();
     card.classList.remove("drop-target");
     const fromIndex = Number(event.dataTransfer.getData("text/plain"));
@@ -127,10 +158,12 @@ function attachDragHandlers(card) {
 }
 
 queueList.addEventListener("dragover", (event) => {
+  if (placementTrack) return;
   event.preventDefault();
 });
 
 queueList.addEventListener("drop", (event) => {
+  if (placementTrack) return;
   const targetCard = event.target.closest(".queue-card");
   if (targetCard) return;
   const fromIndex = Number(event.dataTransfer.getData("text/plain"));
@@ -138,9 +171,24 @@ queueList.addEventListener("drop", (event) => {
   reorderPlaylist(fromIndex, playlistTracks.length - 1);
 });
 
+function enterPlacementMode(item) {
+  placementTrack = item;
+  setPlacementMessage(
+    `Choose where to add "${item.title}". Tap Add before/after on a track.`
+  );
+  renderPlaylist(playlistTracks);
+}
+
+function exitPlacementMode() {
+  placementTrack = null;
+  setPlacementMessage("");
+  renderPlaylist(playlistTracks);
+}
+
 function renderPlayback(data) {
   const playback = data.playback;
   if (!playback || !playback.item) {
+    currentPlaybackId = null;
     playbackStatus.textContent = "Paused";
     playbackStatus.style.color = "#ffd36a";
     playbackHint.textContent = "No active playback found.";
@@ -159,13 +207,33 @@ function renderPlayback(data) {
       : "Playback is currently paused.";
 
   const current = parseTrack(playback.item);
+  currentPlaybackId = current?.id || null;
   nowPlaying.innerHTML = "";
-  nowPlaying.appendChild(createQueueCard(current, "Now playing", 0));
+  nowPlaying.appendChild(createQueueCard(current, "Now playing", 0, true));
 }
 
 function renderPlaylist(tracks) {
   queueList.innerHTML = "";
   if (!tracks.length) {
+    if (placementTrack) {
+      const emptyWrap = document.createElement("div");
+      emptyWrap.className = "queue-empty";
+      const text = document.createElement("p");
+      text.className = "subtle";
+      text.textContent = "Playlist is empty. Add the selected track to start.";
+      const button = document.createElement("button");
+      button.className = "ghost";
+      button.type = "button";
+      button.textContent = "Add to start";
+      button.addEventListener("click", async () => {
+        await addTrackToPlaylist(placementTrack.uri, 0);
+        exitPlacementMode();
+      });
+      emptyWrap.appendChild(text);
+      emptyWrap.appendChild(button);
+      queueList.appendChild(emptyWrap);
+      return;
+    }
     queueList.innerHTML = '<p class="subtle">No tracks in this playlist.</p>';
     return;
   }
@@ -173,7 +241,9 @@ function renderPlaylist(tracks) {
   tracks.forEach((item, index) => {
     const track = parseTrack(item.track);
     if (!track) return;
-    queueList.appendChild(createQueueCard(track, `Next ${index + 1}`, index));
+    const isNowPlaying = currentPlaybackId && track.id === currentPlaybackId;
+    const label = isNowPlaying ? "Now playing" : `Next ${index + 1}`;
+    queueList.appendChild(createQueueCard(track, label, index, isNowPlaying));
   });
 }
 
@@ -188,6 +258,12 @@ function renderSearchResults(tracks) {
     const card = createSearchCard(track);
     searchResults.appendChild(card);
   });
+}
+
+function clearSearchResults() {
+  searchResults.innerHTML = "";
+  searchInput.value = "";
+  exitPlacementMode();
 }
 
 async function fetchPlayback() {
@@ -217,8 +293,20 @@ async function fetchPlayback() {
   }
 }
 
+async function fetchDefaultPlaylistId() {
+  try {
+    const response = await fetch("/status");
+    if (!response.ok) return;
+    const data = await response.json();
+    defaultPlaylistId = data.defaultPlaylistId || null;
+  } catch (error) {
+    console.error("Default playlist fetch error", error);
+  }
+}
+
 async function fetchPlaylists() {
   try {
+    setQueueStatus("Loading playlists…", true);
     const response = await fetch("/api/playlists");
     if (!response.ok) {
       if (response.status === 401) {
@@ -236,10 +324,18 @@ async function fetchPlaylists() {
     playlistSelect.innerHTML = "";
 
     if (!playlists.length) {
-      setQueueStatus("No playlists found. Create one in Spotify first.");
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No playlists found";
+      playlistSelect.appendChild(option);
+      playlistSelect.disabled = true;
+      setQueueStatus(
+        "No playlists found. Create a waiting list playlist to get started."
+      );
       return;
     }
 
+    playlistSelect.disabled = false;
     playlists.forEach((playlist) => {
       const option = document.createElement("option");
       option.value = playlist.id;
@@ -248,9 +344,18 @@ async function fetchPlaylists() {
     });
 
     const stored = localStorage.getItem(PLAYLIST_KEY);
-    const selected = playlists.find((item) => item.id === stored)
-      ? stored
-      : playlists[0].id;
+    let selected = null;
+    if (defaultPlaylistId) {
+      selected = playlists.find((item) => item.id === defaultPlaylistId)
+        ? defaultPlaylistId
+        : null;
+    }
+    if (!selected) {
+      selected = playlists.find((item) => item.id === stored)
+        ? stored
+        : playlists[0].id;
+    }
+
     playlistSelect.value = selected;
     currentPlaylistId = selected;
     localStorage.setItem(PLAYLIST_KEY, selected);
@@ -286,44 +391,13 @@ async function fetchPlaylistTracks(playlistId) {
   }
 }
 
-async function createWaitingListPlaylist() {
-  try {
-    setQueueStatus("Creating playlist…", true);
-    const response = await fetch("/api/playlists/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Waiting List" })
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
-        return;
-      }
-      const text = await response.text();
-      console.error("Playlist create failed", response.status, text);
-      setQueueStatus("Unable to create playlist.");
-      return;
-    }
-
-    const playlist = await response.json();
-    await fetchPlaylists();
-    currentPlaylistId = playlist.id;
-    playlistSelect.value = playlist.id;
-    localStorage.setItem(PLAYLIST_KEY, playlist.id);
-    await fetchPlaylistTracks(playlist.id);
-    setQueueStatus("Playlist created.");
-  } catch (error) {
-    console.error("Playlist create error", error);
-    setQueueStatus("Unable to create playlist.");
-  }
-}
-
 async function searchTracks(query) {
   if (!query.trim()) return;
   try {
     setQueueStatus("Searching tracks…", true);
-    const response = await fetch(`/api/track-search?q=${encodeURIComponent(query)}`);
+    const response = await fetch(
+      `/api/track-search?q=${encodeURIComponent(query)}`
+    );
     if (!response.ok) {
       if (response.status === 401) {
         window.location.href = SESSION_PAGE;
@@ -344,21 +418,21 @@ async function searchTracks(query) {
     }));
 
     renderSearchResults(tracks);
-    setQueueStatus("Select tracks to add.");
+    setQueueStatus("Select a track to place.");
   } catch (error) {
     console.error("Track search error", error);
     setQueueStatus("Unable to search tracks.");
   }
 }
 
-async function addTrackToPlaylist(uri) {
+async function addTrackToPlaylist(uri, position) {
   if (!currentPlaylistId || !uri) return;
   try {
     setQueueStatus("Adding track…", true);
     const response = await fetch(`/api/playlists/${currentPlaylistId}/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uris: [uri] })
+      body: JSON.stringify({ uris: [uri], position })
     });
 
     if (!response.ok) {
@@ -377,6 +451,45 @@ async function addTrackToPlaylist(uri) {
   } catch (error) {
     console.error("Add track error", error);
     setQueueStatus("Unable to add track.");
+  }
+}
+
+async function placeTrackAt(index, placement) {
+  if (!placementTrack) return;
+  const position = placement === "before" ? index : index + 1;
+  await addTrackToPlaylist(placementTrack.uri, position);
+  exitPlacementMode();
+}
+
+async function startPlaylistPlayback() {
+  if (!currentPlaylistId) {
+    setQueueStatus("Select a playlist first.");
+    return;
+  }
+
+  try {
+    setQueueStatus("Starting playlist…", true);
+    const response = await fetch(`/api/playlists/${currentPlaylistId}/play`, {
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Play playlist failed", response.status, text);
+      setQueueStatus(
+        "Unable to start playback. Make sure a Spotify device is active."
+      );
+      return;
+    }
+
+    setQueueStatus("Playback started on Spotify.");
+  } catch (error) {
+    console.error("Play playlist error", error);
+    setQueueStatus("Unable to start playback.");
   }
 }
 
@@ -438,8 +551,8 @@ playlistSelect.addEventListener("change", async (event) => {
   await fetchPlaylistTracks(currentPlaylistId);
 });
 
-createPlaylistBtn.addEventListener("click", () => {
-  createWaitingListPlaylist();
+playPlaylistBtn.addEventListener("click", () => {
+  startPlaylistPlayback();
 });
 
 searchForm.addEventListener("submit", (event) => {
@@ -448,11 +561,16 @@ searchForm.addEventListener("submit", (event) => {
   searchTracks(query);
 });
 
+clearSearchBtn.addEventListener("click", () => {
+  clearSearchResults();
+  setQueueStatus("Showing waiting list.");
+});
+
 fetchPlayback();
-fetchPlaylists();
+fetchDefaultPlaylistId().then(fetchPlaylists);
 setInterval(async () => {
   await fetchPlayback();
-  if (currentPlaylistId && !isDragging && !isReordering) {
+  if (currentPlaylistId && !isDragging && !isReordering && !placementTrack) {
     await fetchPlaylistTracks(currentPlaylistId);
   }
 }, REFRESH_INTERVAL_MS);

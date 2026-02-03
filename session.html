@@ -20,6 +20,7 @@
           <h1>Manage your Spotify connection</h1>
           <p class="lede">
             Review session status, see expiry times, and reconnect if needed.
+            Guests can view status but only the host can connect or disconnect.
           </p>
         </div>
         <div class="panel" id="auth-panel">
@@ -28,6 +29,15 @@
             This app uses a small backend so your Spotify credentials never
             touch the browser.
           </p>
+          <label class="field">
+            <span>Host PIN</span>
+            <input
+              id="host-pin"
+              type="password"
+              placeholder="Enter host PIN"
+              autocomplete="off"
+            />
+          </label>
           <div class="actions">
             <button id="connect-btn" class="primary">Connect Spotify</button>
             <button id="clear-btn" class="ghost">Disconnect</button>
@@ -46,13 +56,18 @@
         <div class="session-grid">
           <div class="panel">
             <p class="meta">Status</p>
-            <p class="session-value" id="session-status">Loading…</p>
+            <p class="session-value" id="session-status">Loading...</p>
             <p class="hint" id="session-status-hint"></p>
           </div>
           <div class="panel">
             <p class="meta">Token expires</p>
-            <p class="session-value" id="session-expiry">—</p>
+            <p class="session-value" id="session-expiry">-</p>
             <p class="hint" id="session-expiry-relative"></p>
+          </div>
+          <div class="panel">
+            <p class="meta">Last refresh</p>
+            <p class="session-value" id="session-refresh">-</p>
+            <p class="hint" id="session-refresh-relative"></p>
           </div>
           <div class="panel">
             <p class="meta">Session info</p>

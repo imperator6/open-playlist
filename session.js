@@ -8,10 +8,33 @@ const sessionExpiry = document.getElementById("session-expiry");
 const sessionExpiryRelative = document.getElementById(
   "session-expiry-relative"
 );
+const sessionRefresh = document.getElementById("session-refresh");
+const sessionRefreshRelative = document.getElementById(
+  "session-refresh-relative"
+);
 const sessionInfo = document.getElementById("session-info");
+const hostPinInput = document.getElementById("host-pin");
+
+let hostPinRequired = true;
 
 function setError(message) {
   errorText.textContent = message || "";
+}
+
+function setHostControlsEnabled(enabled) {
+  connectBtn.disabled = !enabled;
+  clearBtn.disabled = !enabled;
+  connectBtn.setAttribute("aria-disabled", String(!enabled));
+  clearBtn.setAttribute("aria-disabled", String(!enabled));
+}
+
+function updateHostControls() {
+  if (!hostPinRequired) {
+    setHostControlsEnabled(true);
+    return;
+  }
+  const hasPin = hostPinInput.value.trim().length > 0;
+  setHostControlsEnabled(hasPin);
 }
 
 function formatRelative(ms) {
@@ -28,7 +51,8 @@ function renderSessionInfo(data) {
   const items = [
     ["Has access token", data.hasToken ? "Yes" : "No"],
     ["Has refresh token", data.hasRefreshToken ? "Yes" : "No"],
-    ["Has redirect URI", data.hasRedirectUri ? "Yes" : "No"]
+    ["Has redirect URI", data.hasRedirectUri ? "Yes" : "No"],
+    ["Host PIN required", data.hostPinRequired ? "Yes" : "No"]
   ];
 
   items.forEach(([label, value]) => {
@@ -43,8 +67,8 @@ function renderStatus(data) {
   statusText.style.color = data.connected ? "var(--accent)" : "var(--muted)";
   sessionStatus.textContent = data.connected ? "Connected" : "Disconnected";
   sessionStatusHint.textContent = data.connected
-    ? "Spotify access is active."
-    : "Connect to enable search and queue.";
+    ? "Spotify access is active for all guests."
+    : "Host must connect to enable party access.";
 
   if (data.expiresAt) {
     const expiresAt = new Date(data.expiresAt);
@@ -52,10 +76,22 @@ function renderStatus(data) {
     const remaining = expiresAt.getTime() - Date.now();
     sessionExpiryRelative.textContent = formatRelative(remaining);
   } else {
-    sessionExpiry.textContent = "—";
+    sessionExpiry.textContent = "-";
     sessionExpiryRelative.textContent = "";
   }
 
+  if (data.lastRefreshAt) {
+    const refreshedAt = new Date(data.lastRefreshAt);
+    sessionRefresh.textContent = refreshedAt.toLocaleString();
+    const elapsed = Date.now() - refreshedAt.getTime();
+    sessionRefreshRelative.textContent = `${Math.round(elapsed / 60000)} minutes ago`;
+  } else {
+    sessionRefresh.textContent = "-";
+    sessionRefreshRelative.textContent = "";
+  }
+
+  hostPinRequired = Boolean(data.hostPinRequired);
+  updateHostControls();
   renderSessionInfo(data);
 }
 
@@ -67,9 +103,11 @@ async function fetchStatus() {
       renderStatus({
         connected: false,
         expiresAt: null,
+        lastRefreshAt: null,
         hasToken: false,
         hasRefreshToken: false,
-        hasRedirectUri: false
+        hasRedirectUri: false,
+        hostPinRequired: true
       });
       return;
     }
@@ -78,6 +116,59 @@ async function fetchStatus() {
   } catch (error) {
     console.error("Session status error", error);
     setError("Unable to read session status.");
+  }
+}
+
+async function connectHost() {
+  setError("");
+  const pin = hostPinInput.value.trim();
+  try {
+    const response = await fetch("/api/host/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin })
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        setError("Invalid host PIN.");
+        return;
+      }
+      setError("Unable to start Spotify login.");
+      return;
+    }
+
+    const data = await response.json();
+    window.location.href = data.authorizeUrl;
+  } catch (error) {
+    console.error("Host connect error", error);
+    setError("Unable to start Spotify login.");
+  }
+}
+
+async function disconnectHost() {
+  setError("");
+  const pin = hostPinInput.value.trim();
+  try {
+    const response = await fetch("/api/host/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin })
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        setError("Invalid host PIN.");
+        return;
+      }
+      setError("Unable to disconnect.");
+      return;
+    }
+
+    fetchStatus();
+  } catch (error) {
+    console.error("Host logout error", error);
+    setError("Unable to disconnect.");
   }
 }
 
@@ -101,16 +192,16 @@ function readErrorFromUrl() {
   window.history.replaceState({}, "", url);
 }
 
+hostPinInput.addEventListener("input", updateHostControls);
+
 connectBtn.addEventListener("click", () => {
-  setError("");
-  window.location.href = "/login";
+  connectHost();
 });
 
-clearBtn.addEventListener("click", async () => {
-  await fetch("/logout");
-  setError("");
-  fetchStatus();
+clearBtn.addEventListener("click", () => {
+  disconnectHost();
 });
 
 readErrorFromUrl();
 fetchStatus();
+setInterval(fetchStatus, 15000);

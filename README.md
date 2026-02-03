@@ -7,9 +7,28 @@
    - `SPOTIFY_REDIRECT_URI` must match a redirect URI registered in your Spotify app.
      For local development, use `http://127.0.0.1:5173/callback`.
    - `PORT` is the server port (defaults to `5173`).
+   - `HOST_PIN` is required for host-only connect/disconnect.
+   - `AUTO_REFRESH` enables periodic token refresh (set to `1`).
+   - `DEFAULT_PLAYLIST_ID` selects the default waiting list playlist.
+
+### Finding the Playlist ID
+`DEFAULT_PLAYLIST_ID` is not the playlist name. It is the unique Spotify ID.
+To find it:
+1. Open the playlist in Spotify.
+2. Copy the share URL, e.g. `https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M`.
+3. The ID is the part after `/playlist/`:
+   - `37i9dQZF1DXcBWIGoYBM5M`
 
 The server will refuse to start if required values are missing and will show
 helpful instructions in the terminal.
+
+## Start the App (npm)
+1. Install dependencies:
+   - `npm install`
+2. Start the server:
+   - `npm start`
+3. Development mode with auto-reload:
+   - `npm run dev`
 
 ## Getting Spotify Credentials (Client ID/Secret)
 1. Create a Spotify developer account and open the Spotify Developer Dashboard.
