@@ -29,7 +29,12 @@ const sharedQueue = {
   activePlaylistId: null,
   activePlaylistName: null,
   tracks: [],
-  updatedAt: null
+  updatedAt: null,
+  currentIndex: 0,
+  autoPlayEnabled: true,
+  lastSeenTrackId: null,
+  lastAdvanceAt: null,
+  lastError: null
 };
 const SERVICE_NAME = "spotify-server";
 
@@ -122,9 +127,19 @@ function readQueueStore() {
     sharedQueue.activePlaylistName = data.activePlaylistName || null;
     sharedQueue.tracks = Array.isArray(data.tracks) ? data.tracks : [];
     sharedQueue.updatedAt = data.updatedAt || null;
+    sharedQueue.currentIndex =
+      Number.isInteger(data.currentIndex) && data.currentIndex >= 0
+        ? data.currentIndex
+        : 0;
+    sharedQueue.autoPlayEnabled =
+      typeof data.autoPlayEnabled === "boolean" ? data.autoPlayEnabled : true;
+    sharedQueue.lastSeenTrackId = data.lastSeenTrackId || null;
+    sharedQueue.lastAdvanceAt = data.lastAdvanceAt || null;
+    sharedQueue.lastError = data.lastError || null;
     logInfo("Loaded queue store", {
       hasActivePlaylist: Boolean(sharedQueue.activePlaylistId),
-      trackCount: sharedQueue.tracks.length
+      trackCount: sharedQueue.tracks.length,
+      autoPlayEnabled: sharedQueue.autoPlayEnabled
     });
   } catch (err) {
     logWarn("Failed to read queue store", null, err);
@@ -137,7 +152,12 @@ function persistQueueStore() {
       activePlaylistId: sharedQueue.activePlaylistId,
       activePlaylistName: sharedQueue.activePlaylistName,
       tracks: sharedQueue.tracks,
-      updatedAt: sharedQueue.updatedAt
+      updatedAt: sharedQueue.updatedAt,
+      currentIndex: sharedQueue.currentIndex,
+      autoPlayEnabled: sharedQueue.autoPlayEnabled,
+      lastSeenTrackId: sharedQueue.lastSeenTrackId,
+      lastAdvanceAt: sharedQueue.lastAdvanceAt,
+      lastError: sharedQueue.lastError
     };
     fs.writeFileSync(QUEUE_STORE, JSON.stringify(data, null, 2));
   } catch (err) {
@@ -310,6 +330,287 @@ function scheduleAutoRefresh() {
 }
 
 scheduleAutoRefresh();
+
+function getServerTrack(index) {
+  if (!Array.isArray(sharedQueue.tracks)) return null;
+  if (index < 0 || index >= sharedQueue.tracks.length) return null;
+  return sharedQueue.tracks[index];
+}
+
+async function playTrackUri(uri) {
+  const response = await fetch("https://api.spotify.com/v1/me/player/play", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${sharedSession.token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ uris: [uri] })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    logError("Spotify track play failed", {
+      status: response.status,
+      body: text
+    });
+    let message = "Unable to start playback.";
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.error && parsed.error.message) {
+        message = parsed.error.message;
+      }
+    } catch (err) {
+      message = text || message;
+    }
+    sharedQueue.lastError = {
+      message,
+      status: response.status,
+      at: new Date().toISOString()
+    };
+    persistQueueStore();
+    return false;
+  }
+
+  if (sharedQueue.lastError) {
+    sharedQueue.lastError = null;
+    persistQueueStore();
+  }
+  return true;
+}
+
+async function autoPlayTick() {
+  logInfo("Auto play tick", {
+    autoPlayEnabled: sharedQueue.autoPlayEnabled,
+    hasPlaylist: Boolean(sharedQueue.activePlaylistId),
+    trackCount: sharedQueue.tracks.length
+  });
+  if (!sharedQueue.autoPlayEnabled) {
+    logInfo("Auto play tick skipped: disabled");
+    return;
+  }
+  if (!sharedQueue.activePlaylistId) {
+    logInfo("Auto play tick skipped: no active playlist");
+    return;
+  }
+  if (!sharedQueue.tracks.length) {
+    logInfo("Auto play tick skipped: no tracks");
+    return;
+  }
+  if (!(await ensureValidToken(sharedSession))) {
+    logWarn("Auto play tick skipped: no valid token");
+    return;
+  }
+
+  if (
+    !Number.isInteger(sharedQueue.currentIndex) ||
+    sharedQueue.currentIndex < 0
+  ) {
+    sharedQueue.currentIndex = 0;
+  }
+
+  if (sharedQueue.currentIndex >= sharedQueue.tracks.length) {
+    sharedQueue.currentIndex = sharedQueue.tracks.length - 1;
+  }
+
+  const response = await fetch(
+    "https://api.spotify.com/v1/me/player/currently-playing",
+    {
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`
+      }
+    }
+  );
+
+  if (response.status === 204) {
+    logInfo("Auto play tick: no active playback", {
+      currentIndex: sharedQueue.currentIndex,
+      trackCount: sharedQueue.tracks.length,
+      autoPlayEnabled: sharedQueue.autoPlayEnabled
+    });
+    const now = Date.now();
+    const currentTrack = getServerTrack(sharedQueue.currentIndex);
+    if (!currentTrack) return;
+
+    if (!sharedQueue.lastSeenTrackId) {
+      logInfo("Auto play: starting first track", {
+        index: sharedQueue.currentIndex,
+        trackId: currentTrack.id || null,
+        title: currentTrack.title || null
+      });
+      const started = await playTrackUri(currentTrack.uri);
+      if (started) {
+        sharedQueue.lastSeenTrackId = currentTrack.id || null;
+        sharedQueue.lastAdvanceAt = now;
+        persistQueueStore();
+        logInfo("Auto play: track sent to Spotify", {
+          index: sharedQueue.currentIndex,
+          trackId: currentTrack.id || null
+        });
+      }
+      return;
+    }
+
+    if (sharedQueue.lastSeenTrackId !== (currentTrack.id || null)) {
+      return;
+    }
+
+    if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
+      logInfo("Auto play: debounce active", {
+        currentIndex: sharedQueue.currentIndex,
+        msSinceLastAdvance: now - sharedQueue.lastAdvanceAt
+      });
+      return;
+    }
+
+    const nextIndex = sharedQueue.currentIndex + 1;
+    if (nextIndex >= sharedQueue.tracks.length) {
+      logInfo("Auto play reached end of list", {
+        trackCount: sharedQueue.tracks.length
+      });
+      return;
+    }
+
+    const nextTrack = getServerTrack(nextIndex);
+    if (!nextTrack) return;
+
+    logInfo("Auto play: advancing to next track", {
+      fromIndex: sharedQueue.currentIndex,
+      toIndex: nextIndex,
+      trackId: nextTrack.id || null,
+      title: nextTrack.title || null
+    });
+    const started = await playTrackUri(nextTrack.uri);
+    if (started) {
+      const previousIndex = sharedQueue.currentIndex;
+      sharedQueue.currentIndex = nextIndex;
+      sharedQueue.lastSeenTrackId = nextTrack.id || null;
+      sharedQueue.lastAdvanceAt = now;
+      if (
+        Number.isInteger(previousIndex) &&
+        previousIndex >= 0 &&
+        previousIndex < sharedQueue.tracks.length
+      ) {
+        sharedQueue.tracks.splice(previousIndex, 1);
+        if (sharedQueue.currentIndex > previousIndex) {
+          sharedQueue.currentIndex -= 1;
+        }
+      }
+      sharedQueue.updatedAt = new Date().toISOString();
+      persistQueueStore();
+      logInfo("Auto play: next track sent to Spotify", {
+        index: sharedQueue.currentIndex,
+        trackId: nextTrack.id || null
+      });
+    }
+    return;
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    logWarn("Spotify playback poll failed", { status: response.status, body: text });
+    return;
+  }
+
+  const data = await response.json();
+  const item = data && data.item ? data.item : null;
+  if (!item) {
+    logInfo("Auto play tick skipped: no currently-playing item");
+    return;
+  }
+
+  if (sharedQueue.lastError) {
+    sharedQueue.lastError = null;
+    persistQueueStore();
+  }
+
+  const currentTrack = getServerTrack(sharedQueue.currentIndex);
+  if (!currentTrack) {
+    logInfo("Auto play tick skipped: current index out of range", {
+      currentIndex: sharedQueue.currentIndex,
+      trackCount: sharedQueue.tracks.length
+    });
+    return;
+  }
+
+  if (item.id === currentTrack.id) {
+    logInfo("Auto play tick: current track observed", {
+      index: sharedQueue.currentIndex,
+      trackId: item.id || null,
+      isPlaying: Boolean(data.is_playing)
+    });
+    if (sharedQueue.lastSeenTrackId !== item.id) {
+      sharedQueue.lastSeenTrackId = item.id || null;
+      persistQueueStore();
+    }
+
+    if (!data.is_playing) {
+      const now = Date.now();
+      if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
+        logInfo("Auto play: debounce active", {
+          currentIndex: sharedQueue.currentIndex,
+          msSinceLastAdvance: now - sharedQueue.lastAdvanceAt
+        });
+        return;
+      }
+
+      const nextIndex = sharedQueue.currentIndex + 1;
+      if (nextIndex >= sharedQueue.tracks.length) {
+        logInfo("Auto play reached end of list", {
+          trackCount: sharedQueue.tracks.length
+        });
+        return;
+      }
+
+      const nextTrack = getServerTrack(nextIndex);
+      if (!nextTrack) return;
+
+      logInfo("Auto play: advancing to next track (paused)", {
+        fromIndex: sharedQueue.currentIndex,
+        toIndex: nextIndex,
+        trackId: nextTrack.id || null,
+        title: nextTrack.title || null
+      });
+      const started = await playTrackUri(nextTrack.uri);
+      if (started) {
+        const previousIndex = sharedQueue.currentIndex;
+        sharedQueue.currentIndex = nextIndex;
+        sharedQueue.lastSeenTrackId = nextTrack.id || null;
+        sharedQueue.lastAdvanceAt = now;
+        if (
+          Number.isInteger(previousIndex) &&
+          previousIndex >= 0 &&
+          previousIndex < sharedQueue.tracks.length
+        ) {
+          sharedQueue.tracks.splice(previousIndex, 1);
+          if (sharedQueue.currentIndex > previousIndex) {
+            sharedQueue.currentIndex -= 1;
+          }
+        }
+        sharedQueue.updatedAt = new Date().toISOString();
+        persistQueueStore();
+        logInfo("Auto play: next track sent to Spotify", {
+          index: sharedQueue.currentIndex,
+          trackId: nextTrack.id || null
+        });
+      }
+    } else {
+      logInfo("Auto play tick skipped: track still playing");
+    }
+  } else {
+    logInfo("Auto play tick skipped: Spotify track differs from server index", {
+      spotifyTrackId: item.id || null,
+      serverTrackId: currentTrack.id || null,
+      index: sharedQueue.currentIndex
+    });
+  }
+}
+
+const AUTO_PLAY_INTERVAL_MS = 4000;
+setInterval(() => {
+  autoPlayTick().catch((err) => {
+    logWarn("Auto play tick failed", null, err);
+  });
+}, AUTO_PLAY_INTERVAL_MS);
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -639,6 +940,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const uri = body.uri || "";
+    const trackId = body.trackId || "";
     if (!uri) {
       return sendJson(res, 400, { error: "Missing track uri" });
     }
@@ -661,6 +963,73 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Spotify request failed" });
     }
 
+    if (trackId && Array.isArray(sharedQueue.tracks)) {
+      const index = sharedQueue.tracks.findIndex((track) => track.id === trackId);
+      if (index >= 0) {
+        sharedQueue.currentIndex = index;
+        sharedQueue.lastSeenTrackId = trackId;
+        sharedQueue.lastAdvanceAt = Date.now();
+        sharedQueue.updatedAt = new Date().toISOString();
+        persistQueueStore();
+      }
+    }
+
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/player/pause") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const response = await fetch("https://api.spotify.com/v1/me/player/pause", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify pause failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    sharedQueue.autoPlayEnabled = false;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/player/resume") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const response = await fetch("https://api.spotify.com/v1/me/player/play", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify resume failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    sharedQueue.autoPlayEnabled = true;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
     return sendJson(res, 200, { ok: true });
   }
 
@@ -669,7 +1038,95 @@ const server = http.createServer(async (req, res) => {
       playlistId: sharedQueue.activePlaylistId,
       playlistName: sharedQueue.activePlaylistName,
       tracks: sharedQueue.tracks,
-      updatedAt: sharedQueue.updatedAt
+      updatedAt: sharedQueue.updatedAt,
+      currentIndex: sharedQueue.currentIndex,
+      autoPlayEnabled: sharedQueue.autoPlayEnabled,
+      lastError: sharedQueue.lastError
+    });
+  }
+
+  if (pathname === "/api/queue/autoplay") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid autoplay payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const enabled = Boolean(body.enabled);
+    sharedQueue.autoPlayEnabled = enabled;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    if (enabled) {
+      try {
+        if (
+          sharedQueue.activePlaylistId &&
+          Array.isArray(sharedQueue.tracks) &&
+          sharedQueue.tracks.length
+        ) {
+          if (!(await ensureValidToken(sharedSession))) {
+            return sendJson(res, 401, { error: "Not connected" });
+          }
+
+          const playbackRes = await fetch(
+            "https://api.spotify.com/v1/me/player/currently-playing",
+            {
+              headers: {
+                Authorization: `Bearer ${sharedSession.token}`
+              }
+            }
+          );
+
+          if (playbackRes.status === 204) {
+            const first = sharedQueue.tracks[0];
+            if (first && first.uri) {
+              const started = await playTrackUri(first.uri);
+              if (started) {
+                sharedQueue.currentIndex = 0;
+                sharedQueue.lastSeenTrackId = first.id || null;
+                sharedQueue.lastAdvanceAt = Date.now();
+                sharedQueue.updatedAt = new Date().toISOString();
+                persistQueueStore();
+                logInfo("Auto play: started first track after enable", {
+                  trackId: first.id || null
+                });
+              }
+            }
+          } else if (playbackRes.ok) {
+            const playback = await playbackRes.json();
+            const currentId =
+              playback && playback.item ? playback.item.id : null;
+            const matchIndex = sharedQueue.tracks.findIndex(
+              (track) => track.id === currentId
+            );
+            if (matchIndex === -1) {
+              const first = sharedQueue.tracks[0];
+              if (first && first.uri) {
+                const started = await playTrackUri(first.uri);
+                if (started) {
+                  sharedQueue.currentIndex = 0;
+                  sharedQueue.lastSeenTrackId = first.id || null;
+                  sharedQueue.lastAdvanceAt = Date.now();
+                  sharedQueue.updatedAt = new Date().toISOString();
+                  persistQueueStore();
+                  logInfo("Auto play: started first track after enable", {
+                    trackId: first.id || null
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logWarn("Auto play enable check failed", null, error);
+      }
+    }
+
+    return sendJson(res, 200, {
+      ok: true,
+      autoPlayEnabled: sharedQueue.autoPlayEnabled
     });
   }
 
@@ -691,6 +1148,12 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.activePlaylistId = playlistId;
     sharedQueue.activePlaylistName = playlistName || null;
     sharedQueue.updatedAt = new Date().toISOString();
+    if (
+      !Number.isInteger(sharedQueue.currentIndex) ||
+      sharedQueue.currentIndex < 0
+    ) {
+      sharedQueue.currentIndex = 0;
+    }
     persistQueueStore();
 
     return sendJson(res, 200, {
@@ -758,6 +1221,9 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.activePlaylistName = playlistName || null;
     sharedQueue.tracks = tracks;
     sharedQueue.updatedAt = new Date().toISOString();
+    sharedQueue.currentIndex = 0;
+    sharedQueue.lastSeenTrackId = null;
+    sharedQueue.lastAdvanceAt = null;
     persistQueueStore();
 
     return sendJson(res, 200, {
@@ -800,6 +1266,12 @@ const server = http.createServer(async (req, res) => {
       sharedQueue.tracks.push(normalized);
     } else {
       sharedQueue.tracks.splice(position, 0, normalized);
+      if (
+        Number.isInteger(sharedQueue.currentIndex) &&
+        position <= sharedQueue.currentIndex
+      ) {
+        sharedQueue.currentIndex += 1;
+      }
     }
 
     sharedQueue.updatedAt = new Date().toISOString();
@@ -835,6 +1307,13 @@ const server = http.createServer(async (req, res) => {
 
     const [moved] = sharedQueue.tracks.splice(fromIndex, 1);
     sharedQueue.tracks.splice(toIndex, 0, moved);
+    if (sharedQueue.currentIndex === fromIndex) {
+      sharedQueue.currentIndex = toIndex;
+    } else if (fromIndex < sharedQueue.currentIndex && toIndex >= sharedQueue.currentIndex) {
+      sharedQueue.currentIndex -= 1;
+    } else if (fromIndex > sharedQueue.currentIndex && toIndex <= sharedQueue.currentIndex) {
+      sharedQueue.currentIndex += 1;
+    }
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
 

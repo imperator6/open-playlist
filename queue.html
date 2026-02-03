@@ -40,6 +40,18 @@
           <div>
             <h2>Up next (Playlist waiting list)</h2>
             <p class="subtle" id="queue-status"></p>
+            <p class="error" id="queue-error" role="alert"></p>
+            <div class="queue-autoplay">
+              <span class="subtle" id="autoplay-status">Auto-play is on.</span>
+              <button
+                class="ghost"
+                id="toggle-autoplay-btn"
+                type="button"
+                aria-pressed="true"
+              >
+                Turn auto-play off
+              </button>
+            </div>
             <div class="queue-reset">
               <button class="ghost" id="reset-queue-btn" type="button">
                 Reset queue to playlist
@@ -81,6 +93,16 @@
         </div>
         <div class="queue-play">
           <button class="ghost" data-action="play" type="button">Play</button>
+        </div>
+        <div class="queue-now-actions" data-now-actions>
+          <button
+            class="ghost"
+            data-action="toggle-play"
+            type="button"
+            aria-label="Pause playback"
+          >
+            <span class="icon" aria-hidden="true"></span>
+          </button>
         </div>
         <div class="queue-actions">
           <button class="ghost placement-only" data-action="before" type="button">

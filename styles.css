@@ -270,6 +270,14 @@ h1 {
   align-items: end;
 }
 
+.queue-autoplay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
 .queue-reset {
   margin-top: 0.5rem;
   display: flex;
@@ -337,7 +345,7 @@ h1 {
 
 .queue-card {
   display: grid;
-  grid-template-columns: 1.25rem 4rem 1fr auto auto;
+  grid-template-columns: 1.25rem 4rem 1fr auto auto auto;
   gap: 0.75rem;
   padding: 0.75rem;
   background: var(--card);
@@ -413,7 +421,7 @@ h1 {
 }
 
 .queue-card.no-action {
-  grid-template-columns: 1.25rem 4rem 1fr auto;
+  grid-template-columns: 1.25rem 4rem 1fr auto auto;
 }
 
 .queue-card.no-action .placement-only {
@@ -429,6 +437,27 @@ h1 {
 .queue-play {
   display: flex;
   align-items: center;
+}
+
+.queue-now-actions {
+  display: none;
+  align-items: center;
+}
+
+.queue-card.is-current .queue-now-actions {
+  display: flex;
+}
+
+.queue-now-actions .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-block;
+}
+
+.queue-now-actions svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentColor;
 }
 
 .queue-card.placement-mode .queue-actions {
@@ -494,7 +523,7 @@ h1 {
   }
 
   .queue-card {
-    grid-template-columns: 1.25rem 3.5rem 1fr auto auto;
+    grid-template-columns: 1.25rem 3.5rem 1fr auto auto auto;
   }
 
   .queue-card .cover {

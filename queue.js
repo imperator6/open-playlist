@@ -4,11 +4,14 @@ const nowPlaying = document.getElementById("now-playing");
 const queueList = document.getElementById("queue-list");
 const queueCardTemplate = document.getElementById("queue-card");
 const queueStatus = document.getElementById("queue-status");
+const queueError = document.getElementById("queue-error");
 const queuePlacement = document.getElementById("queue-placement");
 const playlistSelect = document.getElementById("playlist-select");
 const playPlaylistBtn = document.getElementById("play-playlist-btn");
 const searchForm = document.getElementById("queue-search-form");
 const resetQueueBtn = document.getElementById("reset-queue-btn");
+const autoPlayStatus = document.getElementById("autoplay-status");
+const toggleAutoplayBtn = document.getElementById("toggle-autoplay-btn");
 const searchInput = document.getElementById("queue-search-input");
 const clearSearchBtn = document.getElementById("clear-search-btn");
 const searchResults = document.getElementById("queue-results");
@@ -25,6 +28,7 @@ let isReordering = false;
 let placementTrack = null;
 let defaultPlaylistId = null;
 let currentPlaybackId = null;
+let autoPlayEnabled = true;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -36,6 +40,45 @@ function setQueueStatus(message, showSaving) {
 
 function setPlacementMessage(message) {
   queuePlacement.textContent = message || "";
+}
+
+function setQueueError(message) {
+  if (!queueError) return;
+  queueError.textContent = message || "";
+}
+function renderAutoplayState(enabled) {
+  if (!autoPlayStatus || !toggleAutoplayBtn) return;
+  autoPlayStatus.textContent = enabled
+    ? "Auto-play is on."
+    : "Auto-play is off.";
+  toggleAutoplayBtn.textContent = enabled
+    ? "Turn auto-play off"
+    : "Turn auto-play on";
+  toggleAutoplayBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
+}
+
+async function updateAutoplayState(enabled) {
+  try {
+    const response = await fetch("/api/queue/autoplay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Autoplay update failed", response.status, text);
+      return false;
+    }
+
+    const data = await response.json();
+    autoPlayEnabled = Boolean(data.autoPlayEnabled);
+    renderAutoplayState(autoPlayEnabled);
+    return true;
+  } catch (error) {
+    console.error("Autoplay update error", error);
+    return false;
+  }
 }
 
 function formatArtists(artists = []) {
@@ -67,6 +110,8 @@ function createQueueCard(item, label, index, isPlaying) {
   const artist = node.querySelector(".artist");
   const actions = node.querySelector(".queue-actions");
   const playButton = node.querySelector('[data-action="play"]');
+  const nowActions = node.querySelector('[data-now-actions]');
+  const togglePlayButton = node.querySelector('[data-action="toggle-play"]');
 
   img.src = item.image;
   img.alt = item.title;
@@ -82,10 +127,38 @@ function createQueueCard(item, label, index, isPlaying) {
     card.classList.add("is-playing");
   }
 
+  if (label === "Now playing") {
+    card.classList.add("is-current");
+    if (playButton) {
+      playButton.remove();
+    }
+    if (togglePlayButton) {
+      const icon = togglePlayButton.querySelector(".icon");
+      if (icon) {
+        icon.innerHTML = isPlaying
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>';
+      }
+      togglePlayButton.setAttribute(
+        "aria-label",
+        isPlaying ? "Pause playback" : "Resume playback"
+      );
+      togglePlayButton.addEventListener("click", async () => {
+        if (isPlaying) {
+          await pausePlayback();
+        } else {
+          await resumePlayback();
+        }
+      });
+    }
+  } else if (nowActions) {
+    nowActions.remove();
+  }
+
   if (playButton) {
     playButton.addEventListener("click", () => {
       if (!item.uri) return;
-      playSingleTrack(item.uri);
+      playSingleTrack(item.uri, item.id);
     });
   }
 
@@ -217,7 +290,10 @@ function renderPlayback(data) {
     return;
   }
 
-  const isPlaying = playback ? playback.is_playing : true;
+  const isPlaying =
+    typeof playback?.is_playing === "boolean"
+      ? playback.is_playing
+      : Boolean(data.queue && data.queue.is_playing);
   const status = isPlaying ? "Playing" : "Paused";
   playbackStatus.textContent = status;
   playbackStatus.style.color =
@@ -229,7 +305,7 @@ function renderPlayback(data) {
   const current = parseTrack(currentItem);
   currentPlaybackId = current?.id || null;
   nowPlaying.innerHTML = "";
-  nowPlaying.appendChild(createQueueCard(current, "Now playing", 0, true));
+  nowPlaying.appendChild(createQueueCard(current, "Now playing", 0, isPlaying));
 }
 
 function renderPlaylist(tracks) {
@@ -415,6 +491,13 @@ async function fetchPlaylistTracks() {
     const data = await response.json();
     currentPlaylistId = data.playlistId || null;
     playlistTracks = data.tracks || [];
+    autoPlayEnabled = Boolean(data.autoPlayEnabled);
+    renderAutoplayState(autoPlayEnabled);
+    if (data.lastError && data.lastError.message) {
+      setQueueError(`Auto-play error: ${data.lastError.message}`);
+    } else {
+      setQueueError("");
+    }
     renderPlaylist(playlistTracks);
     if (!currentPlaylistId) {
       setQueueStatus("Select and load a playlist on the Playlist page.");
@@ -504,14 +587,14 @@ async function placeTrackAt(index, placement) {
   exitPlacementMode();
 }
 
-async function playSingleTrack(uri) {
+async function playSingleTrack(uri, trackId) {
   if (!uri) return;
   try {
     setQueueStatus("Starting track...", true);
     const response = await fetch("/api/track-play", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uri })
+      body: JSON.stringify({ uri, trackId })
     });
 
     if (!response.ok) {
@@ -529,6 +612,36 @@ async function playSingleTrack(uri) {
   } catch (error) {
     console.error("Play track error", error);
     setQueueStatus("Unable to start track.");
+  }
+}
+
+async function pausePlayback() {
+  try {
+    const response = await fetch("/api/player/pause", { method: "POST" });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Pause playback failed", response.status, text);
+      return;
+    }
+    await updateAutoplayState(false);
+    await fetchPlayback();
+  } catch (error) {
+    console.error("Pause playback error", error);
+  }
+}
+
+async function resumePlayback() {
+  try {
+    const response = await fetch("/api/player/resume", { method: "POST" });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Resume playback failed", response.status, text);
+      return;
+    }
+    await updateAutoplayState(true);
+    await fetchPlayback();
+  } catch (error) {
+    console.error("Resume playback error", error);
   }
 }
 async function startPlaylistPlayback() {
@@ -619,6 +732,12 @@ if (playPlaylistBtn) {
 if (resetQueueBtn) {
   resetQueueBtn.addEventListener("click", () => {
     startPlaylistPlayback();
+  });
+}
+
+if (toggleAutoplayBtn) {
+  toggleAutoplayBtn.addEventListener("click", async () => {
+    await updateAutoplayState(!autoPlayEnabled);
   });
 }
 
