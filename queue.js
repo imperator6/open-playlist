@@ -29,6 +29,7 @@ let placementTrack = null;
 let defaultPlaylistId = null;
 let currentPlaybackId = null;
 let autoPlayEnabled = true;
+let lastPlaybackIsPlaying = false;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -294,6 +295,7 @@ function renderPlayback(data) {
     typeof playback?.is_playing === "boolean"
       ? playback.is_playing
       : Boolean(data.queue && data.queue.is_playing);
+  lastPlaybackIsPlaying = isPlaying;
   const status = isPlaying ? "Playing" : "Paused";
   playbackStatus.textContent = status;
   playbackStatus.style.color =
@@ -340,7 +342,19 @@ function renderPlaylist(tracks) {
     if (!track) return;
     const isNowPlaying = currentPlaybackId && track.id === currentPlaybackId;
     const label = isNowPlaying ? "Now playing" : `Next ${index + 1}`;
-    queueList.appendChild(createQueueCard(track, label, index, isNowPlaying));
+    const node = createQueueCard(
+      track,
+      label,
+      index,
+      isNowPlaying && lastPlaybackIsPlaying
+    );
+    if (isNowPlaying && !lastPlaybackIsPlaying) {
+      const card = node.querySelector(".queue-card");
+      if (card) {
+        card.classList.add("is-current");
+      }
+    }
+    queueList.appendChild(node);
   });
 }
 
