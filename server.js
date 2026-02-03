@@ -1005,6 +1005,70 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { ok: true });
   }
 
+  if (pathname === "/api/player/devices") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const response = await fetch("https://api.spotify.com/v1/me/player/devices", {
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify devices fetch failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    const data = await response.json();
+    return sendJson(res, 200, data);
+  }
+
+  if (pathname === "/api/player/transfer") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid transfer payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const deviceId = body.deviceId || "";
+    const play = typeof body.play === "boolean" ? body.play : true;
+    if (!deviceId) {
+      return sendJson(res, 400, { error: "Missing deviceId" });
+    }
+
+    const response = await fetch("https://api.spotify.com/v1/me/player", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ device_ids: [deviceId], play })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify device transfer failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (pathname === "/api/player/resume") {
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });

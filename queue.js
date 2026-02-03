@@ -10,6 +10,8 @@ const playlistSelect = document.getElementById("playlist-select");
 const playPlaylistBtn = document.getElementById("play-playlist-btn");
 const searchForm = document.getElementById("queue-search-form");
 const autoPlayToggle = document.getElementById("autoplay-toggle");
+const deviceSelect = document.getElementById("device-select");
+const deviceStatus = document.getElementById("device-status");
 const searchInput = document.getElementById("queue-search-input");
 const clearSearchBtn = document.getElementById("clear-search-btn");
 const searchResults = document.getElementById("queue-results");
@@ -30,6 +32,7 @@ let autoPlayEnabled = true;
 let lastPlaybackIsPlaying = false;
 let remainingTimerId = null;
 let remainingState = null;
+let lastRemainingText = "";
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -50,6 +53,62 @@ function setQueueError(message) {
 function renderAutoplayState(enabled) {
   if (!autoPlayToggle) return;
   autoPlayToggle.checked = enabled;
+}
+
+function setDeviceStatus(message) {
+  if (!deviceStatus) return;
+  deviceStatus.textContent = message || "";
+}
+
+function renderDeviceOptions(devices, activeId) {
+  if (!deviceSelect) return;
+  deviceSelect.innerHTML = "";
+  if (!devices.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No devices found";
+    deviceSelect.appendChild(option);
+    deviceSelect.disabled = true;
+    setDeviceStatus("Open Spotify on a device to enable playback.");
+    return;
+  }
+
+  devices.forEach((device) => {
+    const option = document.createElement("option");
+    option.value = device.id;
+    option.textContent = device.name;
+    if (device.id === activeId) {
+      option.selected = true;
+    }
+    deviceSelect.appendChild(option);
+  });
+  deviceSelect.disabled = false;
+  setDeviceStatus("");
+}
+
+async function fetchDevices() {
+  if (!deviceSelect) return;
+  try {
+    const response = await fetch("/api/player/devices");
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Devices fetch failed", response.status, text);
+      setDeviceStatus("Unable to load devices.");
+      return;
+    }
+
+    const data = await response.json();
+    const devices = Array.isArray(data.devices) ? data.devices : [];
+    const active = devices.find((device) => device.is_active);
+    renderDeviceOptions(devices, active ? active.id : null);
+  } catch (error) {
+    console.error("Devices fetch error", error);
+    setDeviceStatus("Unable to load devices.");
+  }
 }
 
 async function updateAutoplayState(enabled) {
@@ -100,16 +159,28 @@ function formatRemainingFromMs(remainingMs) {
 function updateRemainingDisplay() {
   if (!remainingState) return;
   const meta = nowPlaying.querySelector(".queue-card .meta");
-  if (!meta) return;
   let remainingMs = remainingState.remainingMs;
   if (remainingState.isPlaying) {
     const elapsed = Date.now() - remainingState.startedAt;
     remainingMs = Math.max(0, remainingState.remainingMs - elapsed);
   }
   const remainingText = formatRemainingFromMs(remainingMs);
-  meta.textContent = remainingText
-    ? `${remainingState.label} - ${remainingText}`
-    : remainingState.label;
+  if (meta) {
+    meta.textContent = remainingText
+      ? `${remainingState.label} - ${remainingText}`
+      : remainingState.label;
+  }
+  if (currentPlaybackId) {
+    const activeMeta = document.querySelector(
+      `.queue-list .queue-card.is-current .meta`
+    );
+    if (activeMeta) {
+      const activeLabel = "Now playing";
+      activeMeta.textContent = remainingText
+        ? `${activeLabel} - ${remainingText}`
+        : activeLabel;
+    }
+  }
 }
 function formatArtists(artists = []) {
   return artists.map((artist) => artist.name).join(", ");
@@ -350,6 +421,7 @@ function renderPlayback(data) {
   currentPlaybackId = current?.id || null;
   nowPlaying.innerHTML = "";
   const remainingText = formatRemainingTime(playback, currentItem);
+  lastRemainingText = remainingText || "";
   nowPlaying.appendChild(
     createQueueCard(current, "Now playing", 0, isPlaying, remainingText)
   );
@@ -413,7 +485,8 @@ function renderPlaylist(tracks) {
       track,
       label,
       index,
-      isNowPlaying && lastPlaybackIsPlaying
+      isNowPlaying && lastPlaybackIsPlaying,
+      isNowPlaying ? lastRemainingText : ""
     );
     if (isNowPlaying && !lastPlaybackIsPlaying) {
       const card = node.querySelector(".queue-card");
@@ -818,6 +891,34 @@ if (autoPlayToggle) {
   });
 }
 
+if (deviceSelect) {
+  deviceSelect.addEventListener("change", async (event) => {
+    const target = event.target;
+    const deviceId = target.value;
+    if (!deviceId) return;
+    try {
+      const response = await fetch("/api/player/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, play: true })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Device transfer failed", response.status, text);
+        setDeviceStatus("Unable to switch device.");
+        return;
+      }
+
+      setDeviceStatus("Device switched.");
+      await fetchPlayback();
+    } catch (error) {
+      console.error("Device transfer error", error);
+      setDeviceStatus("Unable to switch device.");
+    }
+  });
+}
+
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = searchInput.value.trim();
@@ -831,6 +932,10 @@ clearSearchBtn.addEventListener("click", () => {
 
 fetchPlayback();
 fetchDefaultPlaylistId().then(fetchPlaylists);
+fetchDevices();
+setInterval(() => {
+  fetchDevices();
+}, 15000);
 setInterval(async () => {
   await fetchPlayback();
   if (!isDragging && !isReordering && !placementTrack) {

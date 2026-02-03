@@ -18,14 +18,21 @@
       <section class="queue-section">
         <div class="now-playing-header">
           <h2>Now playing</h2>
-          <label class="toggle" for="autoplay-toggle">
-            <span class="toggle-label">Auto-play</span>
-            <input id="autoplay-toggle" type="checkbox" />
-            <span class="toggle-track" aria-hidden="true">
-              <span class="toggle-thumb"></span>
-            </span>
-          </label>
+          <div class="now-playing-controls">
+            <label class="toggle" for="autoplay-toggle">
+              <span class="toggle-label">Auto-play</span>
+              <input id="autoplay-toggle" type="checkbox" />
+              <span class="toggle-track" aria-hidden="true">
+                <span class="toggle-thumb"></span>
+              </span>
+            </label>
+            <label class="device-picker" for="device-select">
+              <span class="toggle-label">Device</span>
+              <select id="device-select"></select>
+            </label>
+          </div>
         </div>
+        <p class="hint" id="device-status"></p>
         <div id="now-playing"></div>
       </section>
 

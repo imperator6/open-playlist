@@ -272,6 +272,13 @@ h1 {
   flex-wrap: wrap;
 }
 
+.now-playing-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -280,6 +287,23 @@ h1 {
   color: var(--muted);
   cursor: pointer;
   user-select: none;
+}
+
+.device-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.device-picker select {
+  min-width: 10rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--card);
+  color: var(--text);
 }
 
 .toggle input {
