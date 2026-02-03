@@ -9,9 +9,7 @@ const queuePlacement = document.getElementById("queue-placement");
 const playlistSelect = document.getElementById("playlist-select");
 const playPlaylistBtn = document.getElementById("play-playlist-btn");
 const searchForm = document.getElementById("queue-search-form");
-const resetQueueBtn = document.getElementById("reset-queue-btn");
-const autoPlayStatus = document.getElementById("autoplay-status");
-const toggleAutoplayBtn = document.getElementById("toggle-autoplay-btn");
+const autoPlayToggle = document.getElementById("autoplay-toggle");
 const searchInput = document.getElementById("queue-search-input");
 const clearSearchBtn = document.getElementById("clear-search-btn");
 const searchResults = document.getElementById("queue-results");
@@ -50,14 +48,8 @@ function setQueueError(message) {
   queueError.textContent = message || "";
 }
 function renderAutoplayState(enabled) {
-  if (!autoPlayStatus || !toggleAutoplayBtn) return;
-  autoPlayStatus.textContent = enabled
-    ? "Auto-play is on."
-    : "Auto-play is off.";
-  toggleAutoplayBtn.textContent = enabled
-    ? "Turn auto-play off"
-    : "Turn auto-play on";
-  toggleAutoplayBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
+  if (!autoPlayToggle) return;
+  autoPlayToggle.checked = enabled;
 }
 
 async function updateAutoplayState(enabled) {
@@ -98,7 +90,7 @@ function formatRemainingTime(playback, currentItem) {
 function formatRemainingFromMs(remainingMs) {
   const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   if (remainingSeconds < 60) {
-    return `${remainingSeconds}s`;
+    return `${remainingSeconds}`;
   }
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;
@@ -818,15 +810,11 @@ if (playPlaylistBtn) {
   });
 }
 
-if (resetQueueBtn) {
-  resetQueueBtn.addEventListener("click", () => {
-    startPlaylistPlayback();
-  });
-}
 
-if (toggleAutoplayBtn) {
-  toggleAutoplayBtn.addEventListener("click", async () => {
-    await updateAutoplayState(!autoPlayEnabled);
+if (autoPlayToggle) {
+  autoPlayToggle.addEventListener("change", async (event) => {
+    const target = event.target;
+    await updateAutoplayState(Boolean(target.checked));
   });
 }
 

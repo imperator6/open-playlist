@@ -16,7 +16,16 @@
       </nav>
 
       <section class="queue-section">
-        <h2>Now playing</h2>
+        <div class="now-playing-header">
+          <h2>Now playing</h2>
+          <label class="toggle" for="autoplay-toggle">
+            <span class="toggle-label">Auto-play</span>
+            <input id="autoplay-toggle" type="checkbox" />
+            <span class="toggle-track" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+          </label>
+        </div>
         <div id="now-playing"></div>
       </section>
 
@@ -26,22 +35,6 @@
             <h2>Up next (Playlist waiting list)</h2>
             <p class="subtle" id="queue-status"></p>
             <p class="error" id="queue-error" role="alert"></p>
-            <div class="queue-autoplay">
-              <span class="subtle" id="autoplay-status">Auto-play is on.</span>
-              <button
-                class="ghost"
-                id="toggle-autoplay-btn"
-                type="button"
-                aria-pressed="true"
-              >
-                Turn auto-play off
-              </button>
-            </div>
-            <div class="queue-reset">
-              <button class="ghost" id="reset-queue-btn" type="button">
-                Reset queue to playlist
-              </button>
-            </div>
           </div>
         </div>
         <form class="queue-search" id="queue-search-form">
