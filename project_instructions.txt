@@ -92,6 +92,11 @@ LOGGING BEHAVIOR
 - Avoid excessive logging in high-frequency code paths.
 - Logging must not significantly impact performance.
 
+────────────────────────────────
+GIT 
+────────────────────────────────
+- commit every change local
+
 
 ────────────────────────────────
 OUTPUT EXPECTATIONS
@@ -105,3 +110,5 @@ IMPORTANT
 ────────────────────────────────
 These rules have higher priority than individual task instructions.
 If a task conflicts with these rules, follow this file.
+
+

@@ -10,11 +10,12 @@
     <main class="page">
       <nav class="menu" aria-label="Primary">
         <a href="index.html">Search</a>
+        <a href="playlist.html">Playlist</a>
         <a href="queue.html" class="active">Waiting List</a>
         <a href="session.html">Session</a>
       </nav>
 
-      <header class="queue-hero">
+      <!-- header class="queue-hero">
         <div>
           <p class="eyebrow">Queue</p>
           <h1>Now playing & waiting list</h1>
@@ -24,10 +25,10 @@
         </div>
         <div class="panel">
           <h2>Status</h2>
-          <p class="status" id="playback-status">Loading…</p>
+          <p class="status" id="playback-status">Loadingï¿½</p>
           <p class="hint" id="playback-hint"></p>
         </div>
-      </header>
+      </header -->
 
       <section class="queue-section">
         <h2>Now playing</h2>
@@ -39,15 +40,6 @@
           <div>
             <h2>Up next (Playlist waiting list)</h2>
             <p class="subtle" id="queue-status"></p>
-          </div>
-          <div class="queue-controls">
-            <label class="field">
-              <span>Waiting list playlist</span>
-              <select id="playlist-select"></select>
-            </label>
-            <button class="primary" id="play-playlist-btn" type="button">
-              Start playlist on Spotify
-            </button>
           </div>
         </div>
         <form class="queue-search" id="queue-search-form">
@@ -95,6 +87,7 @@
 
     <template id="search-card">
       <article class="queue-card">
+        <span class="activity" aria-hidden="true"></span>
         <div class="cover">
           <img alt="" />
         </div>

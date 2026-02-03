@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Playlist</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <nav class="menu" aria-label="Primary">
+        <a href="index.html">Search</a>
+        <a href="playlist.html" class="active">Playlist</a>
+        <a href="queue.html">Waiting List</a>
+        <a href="session.html">Session</a>
+      </nav>
+
+      <header class="queue-hero">
+        <div>
+          <p class="eyebrow">Playlist</p>
+          <h1>Choose the waiting list playlist</h1>
+          <p class="lede">
+            Pick the playlist used for the waiting list, then start playback on
+            your active Spotify device.
+          </p>
+        </div>
+        <div class="panel">
+          <h2>Playback</h2>
+          <p class="status" id="playlist-status">Loading playlists…</p>
+          <p class="hint" id="playlist-hint">
+            Select a playlist before starting playback.
+          </p>
+          <label class="field">
+            <span>Waiting list playlist</span>
+            <select id="playlist-select"></select>
+          </label>
+          <div class="actions">
+            <button class="primary" id="play-playlist-btn" type="button">
+              Start playlist on Spotify
+            </button>
+          </div>
+        </div>
+      </header>
+    </main>
+
+    <script src="playlist.js"></script>
+  </body>
+</html>

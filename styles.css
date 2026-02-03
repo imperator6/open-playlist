@@ -112,6 +112,15 @@ h1 {
   color: var(--text);
 }
 
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f1116;
+  color: var(--text);
+}
+
 .actions {
   display: flex;
   gap: 12px;

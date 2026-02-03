@@ -284,6 +284,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/queue" || pathname === "/queue.html") {
     return readStaticFile(path.join(__dirname, "queue.html"), res);
   }
+  if (pathname === "/playlist" || pathname === "/playlist.html") {
+    return readStaticFile(path.join(__dirname, "playlist.html"), res);
+  }
   if (pathname === "/styles.css") {
     return readStaticFile(path.join(__dirname, "styles.css"), res);
   }
@@ -295,6 +298,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === "/queue.js") {
     return readStaticFile(path.join(__dirname, "queue.js"), res);
+  }
+  if (pathname === "/playlist.js") {
+    return readStaticFile(path.join(__dirname, "playlist.js"), res);
   }
 
   if (pathname === "/status") {

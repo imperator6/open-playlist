@@ -321,27 +321,33 @@ async function fetchPlaylists() {
 
     const data = await response.json();
     const playlists = data.items || [];
-    playlistSelect.innerHTML = "";
+    if (playlistSelect) {
+      playlistSelect.innerHTML = "";
+    }
 
     if (!playlists.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No playlists found";
-      playlistSelect.appendChild(option);
-      playlistSelect.disabled = true;
+      if (playlistSelect) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No playlists found";
+        playlistSelect.appendChild(option);
+        playlistSelect.disabled = true;
+      }
       setQueueStatus(
         "No playlists found. Create a waiting list playlist to get started."
       );
       return;
     }
 
-    playlistSelect.disabled = false;
-    playlists.forEach((playlist) => {
-      const option = document.createElement("option");
-      option.value = playlist.id;
-      option.textContent = playlist.name;
-      playlistSelect.appendChild(option);
-    });
+    if (playlistSelect) {
+      playlistSelect.disabled = false;
+      playlists.forEach((playlist) => {
+        const option = document.createElement("option");
+        option.value = playlist.id;
+        option.textContent = playlist.name;
+        playlistSelect.appendChild(option);
+      });
+    }
 
     const stored = localStorage.getItem(PLAYLIST_KEY);
     let selected = null;
@@ -356,7 +362,9 @@ async function fetchPlaylists() {
         : playlists[0].id;
     }
 
-    playlistSelect.value = selected;
+    if (playlistSelect) {
+      playlistSelect.value = selected;
+    }
     currentPlaylistId = selected;
     localStorage.setItem(PLAYLIST_KEY, selected);
     await fetchPlaylistTracks(selected);
@@ -545,15 +553,19 @@ async function reorderPlaylist(fromIndex, toIndex) {
   }
 }
 
-playlistSelect.addEventListener("change", async (event) => {
-  currentPlaylistId = event.target.value;
-  localStorage.setItem(PLAYLIST_KEY, currentPlaylistId);
-  await fetchPlaylistTracks(currentPlaylistId);
-});
+if (playlistSelect) {
+  playlistSelect.addEventListener("change", async (event) => {
+    currentPlaylistId = event.target.value;
+    localStorage.setItem(PLAYLIST_KEY, currentPlaylistId);
+    await fetchPlaylistTracks(currentPlaylistId);
+  });
+}
 
-playPlaylistBtn.addEventListener("click", () => {
-  startPlaylistPlayback();
-});
+if (playPlaylistBtn) {
+  playPlaylistBtn.addEventListener("click", () => {
+    startPlaylistPlayback();
+  });
+}
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
