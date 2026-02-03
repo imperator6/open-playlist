@@ -30,6 +30,8 @@ let defaultPlaylistId = null;
 let currentPlaybackId = null;
 let autoPlayEnabled = true;
 let lastPlaybackIsPlaying = false;
+let remainingTimerId = null;
+let remainingState = null;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -90,13 +92,32 @@ function formatRemainingTime(playback, currentItem) {
     return "";
   }
   const remainingMs = Math.max(0, durationMs - progressMs);
-  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  return formatRemainingFromMs(remainingMs);
+}
+
+function formatRemainingFromMs(remainingMs) {
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   if (remainingSeconds < 60) {
     return `${remainingSeconds}s`;
   }
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateRemainingDisplay() {
+  if (!remainingState) return;
+  const meta = nowPlaying.querySelector(".queue-card .meta");
+  if (!meta) return;
+  let remainingMs = remainingState.remainingMs;
+  if (remainingState.isPlaying) {
+    const elapsed = Date.now() - remainingState.startedAt;
+    remainingMs = Math.max(0, remainingState.remainingMs - elapsed);
+  }
+  const remainingText = formatRemainingFromMs(remainingMs);
+  meta.textContent = remainingText
+    ? `${remainingState.label} - ${remainingText}`
+    : remainingState.label;
 }
 function formatArtists(artists = []) {
   return artists.map((artist) => artist.name).join(", ");
@@ -304,6 +325,11 @@ function renderPlayback(data) {
     playbackHint.textContent = "No active playback found.";
     nowPlaying.innerHTML =
       '<p class="subtle">Nothing is playing right now.</p>';
+    if (remainingTimerId) {
+      clearInterval(remainingTimerId);
+      remainingTimerId = null;
+    }
+    remainingState = null;
     return;
   }
 
@@ -327,6 +353,28 @@ function renderPlayback(data) {
   nowPlaying.appendChild(
     createQueueCard(current, "Now playing", 0, isPlaying, remainingText)
   );
+  if (remainingTimerId) {
+    clearInterval(remainingTimerId);
+    remainingTimerId = null;
+  }
+  const durationMs =
+    typeof currentItem.duration_ms === "number" ? currentItem.duration_ms : null;
+  const progressMs =
+    typeof playback?.progress_ms === "number" ? playback.progress_ms : null;
+  if (durationMs !== null && progressMs !== null) {
+    remainingState = {
+      label: "Now playing",
+      remainingMs: Math.max(0, durationMs - progressMs),
+      isPlaying,
+      startedAt: Date.now()
+    };
+    updateRemainingDisplay();
+    remainingTimerId = setInterval(() => {
+      updateRemainingDisplay();
+    }, 1000);
+  } else {
+    remainingState = null;
+  }
 }
 
 function renderPlaylist(tracks) {
