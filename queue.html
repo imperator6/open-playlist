@@ -40,6 +40,11 @@
           <div>
             <h2>Up next (Playlist waiting list)</h2>
             <p class="subtle" id="queue-status"></p>
+            <div class="queue-reset">
+              <button class="ghost" id="reset-queue-btn" type="button">
+                Reset queue to playlist
+              </button>
+            </div>
           </div>
         </div>
         <form class="queue-search" id="queue-search-form">
@@ -74,11 +79,14 @@
           <h3></h3>
           <p class="artist"></p>
         </div>
+        <div class="queue-play">
+          <button class="ghost" data-action="play" type="button">Play</button>
+        </div>
         <div class="queue-actions">
-          <button class="ghost" data-action="before" type="button">
+          <button class="ghost placement-only" data-action="before" type="button">
             Add before
           </button>
-          <button class="ghost" data-action="after" type="button">
+          <button class="ghost placement-only" data-action="after" type="button">
             Add after
           </button>
         </div>

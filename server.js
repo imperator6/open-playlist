@@ -12,6 +12,7 @@ const HOST_PIN = process.env.HOST_PIN || "";
 const AUTO_REFRESH =
   String(process.env.AUTO_REFRESH || "1").toLowerCase() === "1";
 const SESSION_STORE = path.join(__dirname, "session_store.json");
+const QUEUE_STORE = path.join(__dirname, "queue_store.json");
 const DEFAULT_PLAYLIST_ID = process.env.DEFAULT_PLAYLIST_ID || "";
 const REDIRECT_URI =
   process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${PORT}/callback`;
@@ -23,6 +24,12 @@ const sharedSession = {
   lastRefreshAt: null,
   state: null,
   redirectUri: null
+};
+const sharedQueue = {
+  activePlaylistId: null,
+  activePlaylistName: null,
+  tracks: [],
+  updatedAt: null
 };
 const SERVICE_NAME = "spotify-server";
 
@@ -106,6 +113,38 @@ function persistSessionStore() {
   }
 }
 
+function readQueueStore() {
+  try {
+    if (!fs.existsSync(QUEUE_STORE)) return;
+    const raw = fs.readFileSync(QUEUE_STORE, "utf-8");
+    const data = JSON.parse(raw);
+    sharedQueue.activePlaylistId = data.activePlaylistId || null;
+    sharedQueue.activePlaylistName = data.activePlaylistName || null;
+    sharedQueue.tracks = Array.isArray(data.tracks) ? data.tracks : [];
+    sharedQueue.updatedAt = data.updatedAt || null;
+    logInfo("Loaded queue store", {
+      hasActivePlaylist: Boolean(sharedQueue.activePlaylistId),
+      trackCount: sharedQueue.tracks.length
+    });
+  } catch (err) {
+    logWarn("Failed to read queue store", null, err);
+  }
+}
+
+function persistQueueStore() {
+  try {
+    const data = {
+      activePlaylistId: sharedQueue.activePlaylistId,
+      activePlaylistName: sharedQueue.activePlaylistName,
+      tracks: sharedQueue.tracks,
+      updatedAt: sharedQueue.updatedAt
+    };
+    fs.writeFileSync(QUEUE_STORE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    logWarn("Failed to persist queue store", null, err);
+  }
+}
+
 const missingEnv = [];
 if (!CLIENT_ID) missingEnv.push("SPOTIFY_CLIENT_ID");
 if (!CLIENT_SECRET) missingEnv.push("SPOTIFY_CLIENT_SECRET");
@@ -131,6 +170,7 @@ if (!HOST_PIN) {
 }
 
 readSessionStore();
+readQueueStore();
 
 function sendJson(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -583,6 +623,225 @@ const server = http.createServer(async (req, res) => {
 
     const data = await response.json();
     return sendJson(res, 200, data);
+  }
+
+  if (pathname === "/api/track-play") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid play track payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const uri = body.uri || "";
+    if (!uri) {
+      return sendJson(res, 400, { error: "Missing track uri" });
+    }
+
+    const response = await fetch("https://api.spotify.com/v1/me/player/play", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ uris: [uri] })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify track play failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/queue/playlist") {
+    return sendJson(res, 200, {
+      playlistId: sharedQueue.activePlaylistId,
+      playlistName: sharedQueue.activePlaylistName,
+      tracks: sharedQueue.tracks,
+      updatedAt: sharedQueue.updatedAt
+    });
+  }
+
+  if (pathname === "/api/queue/playlist/select") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid playlist select payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const playlistId = body.playlistId || "";
+    const playlistName = body.playlistName || "";
+    if (!playlistId) {
+      return sendJson(res, 400, { error: "Missing playlistId" });
+    }
+
+    sharedQueue.activePlaylistId = playlistId;
+    sharedQueue.activePlaylistName = playlistName || null;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    return sendJson(res, 200, {
+      ok: true,
+      playlistId: sharedQueue.activePlaylistId,
+      playlistName: sharedQueue.activePlaylistName
+    });
+  }
+
+  if (pathname === "/api/queue/playlist/load") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid playlist load payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const playlistId = body.playlistId || "";
+    const playlistName = body.playlistName || "";
+    if (!playlistId) {
+      return sendJson(res, 400, { error: "Missing playlistId" });
+    }
+
+    const response = await fetch(
+      `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`,
+      {
+        headers: {
+          Authorization: `Bearer ${sharedSession.token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify playlist tracks load failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const tracks = items
+      .map((item) => item.track)
+      .filter(Boolean)
+      .map((track) => ({
+        id: track.id,
+        uri: track.uri,
+        title: track.name,
+        artist: (track.artists || []).map((artist) => artist.name).join(", "),
+        image:
+          track.album && track.album.images && track.album.images[0]
+            ? track.album.images[0].url
+            : "",
+        album: track.album ? track.album.name : ""
+      }));
+
+    sharedQueue.activePlaylistId = playlistId;
+    sharedQueue.activePlaylistName = playlistName || null;
+    sharedQueue.tracks = tracks;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    return sendJson(res, 200, {
+      ok: true,
+      playlistId: sharedQueue.activePlaylistId,
+      playlistName: sharedQueue.activePlaylistName,
+      tracks: sharedQueue.tracks
+    });
+  }
+
+  if (pathname === "/api/queue/playlist/add") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid playlist add payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const track = body.track || null;
+    const position =
+      Number.isInteger(body.position) && body.position >= 0
+        ? body.position
+        : null;
+
+    if (!track || !track.uri) {
+      return sendJson(res, 400, { error: "Missing track data" });
+    }
+
+    const normalized = {
+      id: track.id || null,
+      uri: track.uri,
+      title: track.title || "Unknown title",
+      artist: track.artist || "Unknown artist",
+      image: track.image || "",
+      album: track.album || ""
+    };
+
+    if (position === null || position >= sharedQueue.tracks.length) {
+      sharedQueue.tracks.push(normalized);
+    } else {
+      sharedQueue.tracks.splice(position, 0, normalized);
+    }
+
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    return sendJson(res, 200, {
+      ok: true,
+      tracks: sharedQueue.tracks
+    });
+  }
+
+  if (pathname === "/api/queue/playlist/reorder") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid playlist reorder payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const fromIndex = Number(body.fromIndex);
+    const toIndex = Number(body.toIndex);
+    if (
+      Number.isNaN(fromIndex) ||
+      Number.isNaN(toIndex) ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= sharedQueue.tracks.length ||
+      toIndex >= sharedQueue.tracks.length
+    ) {
+      return sendJson(res, 400, { error: "Invalid indices" });
+    }
+
+    const [moved] = sharedQueue.tracks.splice(fromIndex, 1);
+    sharedQueue.tracks.splice(toIndex, 0, moved);
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+
+    return sendJson(res, 200, {
+      ok: true,
+      tracks: sharedQueue.tracks
+    });
   }
 
   const playlistTracksMatch = pathname.match(

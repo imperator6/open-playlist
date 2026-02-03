@@ -270,6 +270,13 @@ h1 {
   align-items: end;
 }
 
+.queue-reset {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .queue-controls {
   display: grid;
   gap: 0.75rem;
@@ -330,7 +337,7 @@ h1 {
 
 .queue-card {
   display: grid;
-  grid-template-columns: 1.25rem 4rem 1fr auto;
+  grid-template-columns: 1.25rem 4rem 1fr auto auto;
   gap: 0.75rem;
   padding: 0.75rem;
   background: var(--card);
@@ -406,10 +413,10 @@ h1 {
 }
 
 .queue-card.no-action {
-  grid-template-columns: 1.25rem 4rem 1fr;
+  grid-template-columns: 1.25rem 4rem 1fr auto;
 }
 
-.queue-card.no-action button {
+.queue-card.no-action .placement-only {
   display: none;
 }
 
@@ -417,6 +424,11 @@ h1 {
   display: none;
   gap: 0.35rem;
   flex-direction: column;
+}
+
+.queue-play {
+  display: flex;
+  align-items: center;
 }
 
 .queue-card.placement-mode .queue-actions {
@@ -482,7 +494,7 @@ h1 {
   }
 
   .queue-card {
-    grid-template-columns: 1.25rem 3.5rem 1fr auto;
+    grid-template-columns: 1.25rem 3.5rem 1fr auto auto;
   }
 
   .queue-card .cover {

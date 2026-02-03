@@ -1,5 +1,6 @@
-const playlistSelect = document.getElementById("playlist-select");
+﻿const playlistSelect = document.getElementById("playlist-select");
 const playPlaylistBtn = document.getElementById("play-playlist-btn");
+const loadPlaylistBtn = document.getElementById("load-playlist-btn");
 const playlistStatus = document.getElementById("playlist-status");
 const playlistHint = document.getElementById("playlist-hint");
 
@@ -11,7 +12,7 @@ let defaultPlaylistId = null;
 
 function setStatus(message, showSaving) {
   if (showSaving) {
-    playlistStatus.innerHTML = '<span class="saving-badge">Saving…</span>';
+    playlistStatus.innerHTML = '<span class="saving-badge">Saving...</span>';
     return;
   }
   playlistStatus.textContent = message || "";
@@ -32,9 +33,67 @@ async function fetchDefaultPlaylistId() {
   }
 }
 
+async function selectActivePlaylist() {
+  if (!currentPlaylistId) return;
+  try {
+    await fetch("/api/queue/playlist/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playlistId: currentPlaylistId,
+        playlistName: playlistSelect.options[playlistSelect.selectedIndex]
+          ?.textContent
+      })
+    });
+  } catch (error) {
+    console.error("Playlist select error", error);
+  }
+}
+
+async function loadPlaylistFromSpotify() {
+  if (!currentPlaylistId) {
+    setStatus("Select a playlist first.");
+    setHint("Pick a playlist from the dropdown.");
+    return;
+  }
+
+  try {
+    setStatus("Loading playlist...", true);
+    const response = await fetch("/api/queue/playlist/load", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playlistId: currentPlaylistId,
+        playlistName: playlistSelect.options[playlistSelect.selectedIndex]
+          ?.textContent
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Load playlist failed", response.status, text);
+      setStatus("Unable to load playlist.");
+      setHint("Check your Spotify connection and try again.");
+      return;
+    }
+
+    const data = await response.json();
+    const count = Array.isArray(data.tracks) ? data.tracks.length : 0;
+    setStatus("Playlist loaded.");
+    setHint(`Loaded ${count} track${count === 1 ? "" : "s"} from Spotify.`);
+  } catch (error) {
+    console.error("Load playlist error", error);
+    setStatus("Unable to load playlist.");
+    setHint("Try again once Spotify is connected.");
+  }
+}
 async function fetchPlaylists() {
   try {
-    setStatus("Loading playlists…", true);
+    setStatus("Loading playlists...", true);
     const response = await fetch("/api/playlists");
     if (!response.ok) {
       if (response.status === 401) {
@@ -87,6 +146,7 @@ async function fetchPlaylists() {
     playlistSelect.value = selected;
     currentPlaylistId = selected;
     localStorage.setItem(PLAYLIST_KEY, selected);
+    await selectActivePlaylist();
     setStatus("Playlist selected.");
     setHint("Press start to begin playback on Spotify.");
   } catch (error) {
@@ -104,7 +164,7 @@ async function startPlaylistPlayback() {
   }
 
   try {
-    setStatus("Starting playlist…", true);
+    setStatus("Starting playlist...", true);
     const response = await fetch(`/api/playlists/${currentPlaylistId}/play`, {
       method: "POST"
     });
@@ -130,9 +190,10 @@ async function startPlaylistPlayback() {
   }
 }
 
-playlistSelect.addEventListener("change", (event) => {
+playlistSelect.addEventListener("change", async (event) => {
   currentPlaylistId = event.target.value;
   localStorage.setItem(PLAYLIST_KEY, currentPlaylistId);
+  await selectActivePlaylist();
   setStatus("Playlist updated.");
   setHint("Press start to begin playback on Spotify.");
 });
@@ -140,5 +201,11 @@ playlistSelect.addEventListener("change", (event) => {
 playPlaylistBtn.addEventListener("click", () => {
   startPlaylistPlayback();
 });
+
+if (loadPlaylistBtn) {
+  loadPlaylistBtn.addEventListener("click", () => {
+    loadPlaylistFromSpotify();
+  });
+}
 
 fetchDefaultPlaylistId().then(fetchPlaylists);
