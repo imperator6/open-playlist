@@ -38,6 +38,12 @@ const sharedQueue = {
   activeDeviceId: null,
   activeDeviceName: null
 };
+const sharedPlaybackCache = {
+  playback: null,
+  queue: null,
+  updatedAt: null,
+  lastError: null
+};
 const SERVICE_NAME = "spotify-server";
 
 function writeLog(line, isError) {
@@ -342,6 +348,72 @@ function getServerTrack(index) {
   if (index < 0 || index >= sharedQueue.tracks.length) return null;
   return sharedQueue.tracks[index];
 }
+
+async function refreshPlaybackCache() {
+  if (!(await ensureValidToken(sharedSession))) {
+    sharedPlaybackCache.lastError = "Not connected";
+    return false;
+  }
+
+  const headers = {
+    Authorization: `Bearer ${sharedSession.token}`
+  };
+
+  try {
+    const [playbackRes, queueRes] = await Promise.all([
+      fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+        headers
+      }),
+      fetch("https://api.spotify.com/v1/me/player/queue", { headers })
+    ]);
+
+    if (!playbackRes.ok && playbackRes.status !== 204) {
+      const text = await playbackRes.text();
+      logError("Spotify playback failed", {
+        status: playbackRes.status,
+        body: text
+      });
+      sharedPlaybackCache.lastError = "Playback request failed";
+      return false;
+    }
+
+    if (!queueRes.ok) {
+      const text = await queueRes.text();
+      logError("Spotify queue failed", {
+        status: queueRes.status,
+        body: text
+      });
+      sharedPlaybackCache.lastError = "Queue request failed";
+      return false;
+    }
+
+    const playback =
+      playbackRes.status === 204 ? null : await playbackRes.json();
+    const queue = await queueRes.json();
+
+    sharedPlaybackCache.playback = playback;
+    sharedPlaybackCache.queue = queue;
+    sharedPlaybackCache.updatedAt = new Date().toISOString();
+    sharedPlaybackCache.lastError = null;
+    return true;
+  } catch (error) {
+    logWarn("Spotify playback cache refresh failed", null, error);
+    sharedPlaybackCache.lastError = "Playback refresh failed";
+    return false;
+  }
+}
+
+const PLAYBACK_CACHE_INTERVAL_MS = 8000;
+const PLAYBACK_CACHE_STALE_MS = 15000;
+setInterval(() => {
+  if (!sharedSession.token && !sharedSession.refreshToken) {
+    sharedPlaybackCache.lastError = "Not connected";
+    return;
+  }
+  refreshPlaybackCache().catch((err) => {
+    logWarn("Playback cache refresh failed", null, err);
+  });
+}, PLAYBACK_CACHE_INTERVAL_MS);
 
 async function playTrackUri(uri, deviceId) {
   const query = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
@@ -852,42 +924,21 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { error: "Not connected" });
     }
 
-    const headers = {
-      Authorization: `Bearer ${sharedSession.token}`
-    };
-
-    const [playbackRes, queueRes] = await Promise.all([
-      fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-        headers
-      }),
-      fetch("https://api.spotify.com/v1/me/player/queue", { headers })
-    ]);
-
-    if (!playbackRes.ok && playbackRes.status !== 204) {
-      const text = await playbackRes.text();
-      logError("Spotify playback failed", {
-        status: playbackRes.status,
-        body: text
-      });
-      return sendJson(res, 502, { error: "Playback request failed" });
+    if (!sharedPlaybackCache.updatedAt) {
+      await refreshPlaybackCache();
     }
 
-    if (!queueRes.ok) {
-      const text = await queueRes.text();
-      logError("Spotify queue failed", {
-        status: queueRes.status,
-        body: text
-      });
-      return sendJson(res, 502, { error: "Queue request failed" });
-    }
-
-    const playback =
-      playbackRes.status === 204 ? null : await playbackRes.json();
-    const queue = await queueRes.json();
+    const stale =
+      !sharedPlaybackCache.updatedAt ||
+      Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
+        PLAYBACK_CACHE_STALE_MS;
 
     return sendJson(res, 200, {
-      playback,
-      queue
+      playback: sharedPlaybackCache.playback,
+      queue: sharedPlaybackCache.queue,
+      updatedAt: sharedPlaybackCache.updatedAt,
+      lastError: sharedPlaybackCache.lastError,
+      stale
     });
   }
 
