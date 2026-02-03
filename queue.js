@@ -187,7 +187,10 @@ function exitPlacementMode() {
 
 function renderPlayback(data) {
   const playback = data.playback;
-  if (!playback || !playback.item) {
+  const queuePlayback = data.queue?.currently_playing || null;
+  const currentItem = playback?.item || queuePlayback;
+
+  if (!currentItem) {
     currentPlaybackId = null;
     playbackStatus.textContent = "Paused";
     playbackStatus.style.color = "#ffd36a";
@@ -197,16 +200,16 @@ function renderPlayback(data) {
     return;
   }
 
-  const status = playback.is_playing ? "Playing" : "Paused";
+  const isPlaying = playback ? playback.is_playing : true;
+  const status = isPlaying ? "Playing" : "Paused";
   playbackStatus.textContent = status;
   playbackStatus.style.color =
     status === "Playing" ? "var(--accent)" : "#ffd36a";
-  playbackHint.textContent =
-    status === "Playing"
-      ? "Audio is live right now."
-      : "Playback is currently paused.";
+  playbackHint.textContent = isPlaying
+    ? "Audio is live right now."
+    : "Playback is currently paused.";
 
-  const current = parseTrack(playback.item);
+  const current = parseTrack(currentItem);
   currentPlaybackId = current?.id || null;
   nowPlaying.innerHTML = "";
   nowPlaying.appendChild(createQueueCard(current, "Now playing", 0, true));
