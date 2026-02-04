@@ -330,6 +330,7 @@ if (loadPlaylistBtn) {
   });
 }
 
+
 fetchDefaultPlaylistId().then(fetchPlaylists);
 
 if (playlistSearchForm && playlistSearchInput) {

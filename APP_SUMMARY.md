@@ -5,7 +5,9 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 
 ## Pages
 - `index.html`: Home + full playback controls (play/pause, progress, remaining, autoplay, device).
+- Home also displays queue count pulled from the playback stream, and shows a red “Load Songs from a Playlist” button when empty.
 - `playlist.html`: Choose the waiting-list playlist, start playback, and search public playlists.
+- `playlist.html`: Choose the waiting-list playlist, start playback, search public playlists, and clear the queue.
 - `queue.html`: Reorder the waiting list, add/remove tracks, and control queue placement.
 - `recently.html`: View recently played tracks and add one as next in the queue.
 - `session.html`: Connect/disconnect Spotify and view session details.

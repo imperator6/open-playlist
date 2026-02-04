@@ -14,6 +14,9 @@ const homeRemaining = document.getElementById("home-remaining");
 const playbackWidget = document.querySelector(".playback-widget");
 const playbackTrack = document.querySelector(".playback-track");
 const playbackControls = document.querySelector(".playback-controls");
+const homeQueueStatus = document.getElementById("home-queue-status");
+const homeLoadQueueBtn = document.getElementById("home-load-queue-btn");
+const homeClearQueueBtn = document.getElementById("home-clear-queue-btn");
 const MENU_SESSION_PAGE = "session.html";
 
 let homeSelectedDeviceId = null;
@@ -133,10 +136,36 @@ async function fetchStatus() {
   }
 }
 
+function setHomeQueueStatus(count) {
+  if (!homeQueueStatus) return;
+  const text = homeQueueStatus.querySelector(".queue-count-text");
+  if (!text) return;
+  if (!count) {
+    text.textContent = "Queue is empty.";
+    if (homeLoadQueueBtn) {
+      homeLoadQueueBtn.style.display = "inline-flex";
+    }
+    if (homeClearQueueBtn) {
+      homeClearQueueBtn.style.display = "none";
+    }
+    return;
+  }
+  text.textContent = `${count} track${count === 1 ? "" : "s"} in the queue.`;
+  if (homeLoadQueueBtn) {
+    homeLoadQueueBtn.style.display = "none";
+  }
+  if (homeClearQueueBtn) {
+    homeClearQueueBtn.style.display = "inline-flex";
+  }
+}
+
 function applyHomePlaybackPayload(data) {
   const playback = data.playback;
   const queuePlayback = data.queue?.currently_playing || null;
   const currentItem = playback?.item || queuePlayback;
+  if (typeof data.queueCount === "number") {
+    setHomeQueueStatus(data.queueCount);
+  }
   if (homeAutoplayToggle && typeof data.autoPlayEnabled === "boolean") {
     homeAutoplayToggle.checked = data.autoPlayEnabled;
   }
@@ -402,6 +431,34 @@ if (homePlayToggle) {
     } catch (error) {
       console.error("Home play toggle error", error);
       startHomePlaybackLongPoll();
+    }
+  });
+}
+
+if (homeLoadQueueBtn) {
+  homeLoadQueueBtn.addEventListener("click", () => {
+    window.location.href = "playlist.html";
+  });
+}
+
+if (homeClearQueueBtn) {
+  homeClearQueueBtn.addEventListener("click", async () => {
+    const confirmClear = window.confirm(
+      "Clear the waiting list queue? This will remove all tracks."
+    );
+    if (!confirmClear) return;
+
+    try {
+      const response = await fetch("/api/queue/playlist/clear", {
+        method: "POST"
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Clear queue failed", response.status, text);
+        return;
+      }
+    } catch (error) {
+      console.error("Clear queue error", error);
     }
   });
 }

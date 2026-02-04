@@ -143,6 +143,22 @@ h1 {
   padding: 0.85rem;
 }
 
+.queue-status-card {
+  margin-top: 1rem;
+  background: rgba(15, 17, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.queue-count-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
 .playback-track {
   display: grid;
   grid-template-columns: 4.5rem 1fr;
@@ -309,6 +325,30 @@ h1 {
   padding: 12px 18px;
   border-radius: 999px;
   cursor: pointer;
+}
+
+.danger {
+  background: #ff5a52;
+  color: #0a0c0f;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(255, 90, 82, 0.3);
+}
+
+.load-queue-btn {
+  justify-self: start;
+}
+
+.clear-queue-btn {
+  justify-self: start;
 }
 
 .status {

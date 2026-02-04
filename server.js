@@ -513,6 +513,7 @@ function notifyPlaybackSubscribers() {
     updatedAt: sharedPlaybackCache.updatedAt,
     lastError: sharedPlaybackCache.lastError,
     autoPlayEnabled: sharedQueue.autoPlayEnabled,
+    queueCount: Array.isArray(sharedQueue.tracks) ? sharedQueue.tracks.length : 0,
     stale:
       !sharedPlaybackCache.updatedAt ||
       Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
@@ -1113,7 +1114,10 @@ const server = http.createServer(async (req, res) => {
         updatedAt: sharedPlaybackCache.updatedAt,
         lastError: sharedPlaybackCache.lastError,
         stale,
-        autoPlayEnabled: sharedQueue.autoPlayEnabled
+        autoPlayEnabled: sharedQueue.autoPlayEnabled,
+        queueCount: Array.isArray(sharedQueue.tracks)
+          ? sharedQueue.tracks.length
+          : 0
       });
     }
 
@@ -1132,7 +1136,10 @@ const server = http.createServer(async (req, res) => {
         updatedAt: sharedPlaybackCache.updatedAt,
         lastError: sharedPlaybackCache.lastError,
         stale,
-        autoPlayEnabled: sharedQueue.autoPlayEnabled
+        autoPlayEnabled: sharedQueue.autoPlayEnabled,
+        queueCount: Array.isArray(sharedQueue.tracks)
+          ? sharedQueue.tracks.length
+          : 0
       });
     }, 25000);
 
@@ -1795,6 +1802,21 @@ const server = http.createServer(async (req, res) => {
 
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
+
+    return sendJson(res, 200, {
+      ok: true,
+      tracks: sharedQueue.tracks
+    });
+  }
+
+  if (pathname === "/api/queue/playlist/clear") {
+    sharedQueue.tracks = [];
+    sharedQueue.updatedAt = new Date().toISOString();
+    sharedQueue.currentIndex = 0;
+    sharedQueue.lastSeenTrackId = null;
+    sharedQueue.lastAdvanceAt = null;
+    persistQueueStore();
+    notifyPlaybackSubscribers();
 
     return sendJson(res, 200, {
       ok: true,
