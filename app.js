@@ -11,6 +11,7 @@ const homePlayToggle = document.getElementById("home-play-toggle");
 const homeProgressBar = document.getElementById("home-progress-bar");
 const homeElapsed = document.getElementById("home-elapsed");
 const homeRemaining = document.getElementById("home-remaining");
+const homeStartPlaybackBtn = document.getElementById("home-start-playback-btn");
 const playbackWidget = document.querySelector(".playback-widget");
 const playbackTrack = document.querySelector(".playback-track");
 const playbackControls = document.querySelector(".playback-controls");
@@ -24,6 +25,7 @@ let homeProgressTimer = null;
 let homeProgressState = null;
 let homePlaybackSince = null;
 let homeDevicesSince = null;
+let homeQueueCount = null;
 
 function setHomePlaybackStatus(text, isPlaying) {
   if (!homePlaybackStatus) return;
@@ -140,6 +142,7 @@ function setHomeQueueStatus(count) {
   if (!homeQueueStatus) return;
   const text = homeQueueStatus.querySelector(".queue-count-text");
   if (!text) return;
+  homeQueueCount = typeof count === "number" ? count : null;
   if (!count) {
     text.textContent = "Queue is empty.";
     if (homeLoadQueueBtn) {
@@ -147,6 +150,12 @@ function setHomeQueueStatus(count) {
     }
     if (homeClearQueueBtn) {
       homeClearQueueBtn.style.display = "none";
+    }
+    if (homeAutoplayToggle) {
+      homeAutoplayToggle.disabled = true;
+    }
+    if (homeStartPlaybackBtn) {
+      homeStartPlaybackBtn.disabled = true;
     }
     return;
   }
@@ -157,6 +166,17 @@ function setHomeQueueStatus(count) {
   if (homeClearQueueBtn) {
     homeClearQueueBtn.style.display = "inline-flex";
   }
+  if (homeAutoplayToggle) {
+    homeAutoplayToggle.disabled = false;
+  }
+  if (homeStartPlaybackBtn) {
+    homeStartPlaybackBtn.disabled = false;
+  }
+}
+
+function setHomeStartPlaybackVisibility(show) {
+  if (!homeStartPlaybackBtn) return;
+  homeStartPlaybackBtn.style.display = show ? "inline-flex" : "none";
 }
 
 function applyHomePlaybackPayload(data) {
@@ -174,6 +194,7 @@ function applyHomePlaybackPayload(data) {
     setHomePlaybackHint("No active playback found.");
     setPlaybackVisibility(false);
     renderHomeTrackDetails(null);
+    setHomeStartPlaybackVisibility(true);
     if (homeProgressBar) {
       homeProgressBar.value = "0";
       homeProgressBar.max = "100";
@@ -199,6 +220,7 @@ function applyHomePlaybackPayload(data) {
   const track = parseTrack(currentItem);
   setPlaybackVisibility(true);
   renderHomeTrackDetails(track);
+  setHomeStartPlaybackVisibility(false);
 
   const durationMs =
     typeof currentItem.duration_ms === "number" ? currentItem.duration_ms : 0;
@@ -349,6 +371,14 @@ startHomePlaybackLongPoll();
 startHomeDevicesLongPoll();
 
 if (homeAutoplayToggle) {
+  homeAutoplayToggle.disabled = true;
+}
+
+if (homeStartPlaybackBtn) {
+  homeStartPlaybackBtn.disabled = true;
+}
+
+if (homeAutoplayToggle) {
   homeAutoplayToggle.addEventListener("change", (event) => {
     updateHomeAutoplay(Boolean(event.target.checked));
   });
@@ -438,6 +468,18 @@ if (homePlayToggle) {
 if (homeLoadQueueBtn) {
   homeLoadQueueBtn.addEventListener("click", () => {
     window.location.href = "playlist.html";
+  });
+}
+
+if (homeStartPlaybackBtn) {
+  homeStartPlaybackBtn.addEventListener("click", async () => {
+    if (homeQueueCount !== null && homeQueueCount <= 0) return;
+    if (homeAutoplayToggle) {
+      homeAutoplayToggle.checked = true;
+    }
+    setHomePlaybackStatus("Starting...", true);
+    setHomePlaybackHint("Turning on auto-play to start the queue.");
+    await updateHomeAutoplay(true);
   });
 }
 

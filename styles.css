@@ -153,10 +153,20 @@ h1 {
   gap: 0.3rem;
 }
 
+.queue-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
 .queue-count-text {
   margin: 0;
   font-size: 0.95rem;
   color: var(--text);
+  flex: 1;
+  min-width: 0;
 }
 
 .playback-track {
@@ -341,6 +351,11 @@ h1 {
 .danger:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(255, 90, 82, 0.3);
+}
+
+.home-start-playback {
+  justify-self: start;
+  display: none;
 }
 
 .load-queue-btn {

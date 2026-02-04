@@ -58,24 +58,6 @@
             Choose a device, toggle auto-play, and keep an eye on the current
             track. Use the tabs below to manage your queue or playlists.
           </p>
-          <div class="queue-status-card" id="home-queue-status">
-            <p class="meta">Queue status</p>
-            <p class="queue-count-text">Loading queue…</p>
-            <button
-              class="danger load-queue-btn"
-              id="home-load-queue-btn"
-              type="button"
-            >
-              Load Songs from a Playlist
-            </button>
-            <button
-              class="ghost clear-queue-btn"
-              id="home-clear-queue-btn"
-              type="button"
-            >
-              Clear queue
-            </button>
-          </div>
         </div>
         <div class="panel home-panel">
           <div class="now-playing-header">
@@ -100,6 +82,13 @@
               <p class="status" id="home-playback-status"></p>
               <p class="hint" id="home-playback-hint"></p>
             </div>
+            <button
+              class="primary home-start-playback"
+              id="home-start-playback-btn"
+              type="button"
+            >
+              Start playback
+            </button>
             <div class="playback-track">
               <div class="home-cover">
                 <img id="home-track-image" alt="" />
@@ -140,6 +129,26 @@
               <p class="hint" id="home-playback-hint"></p>
             </div>
           </section>
+          <div class="queue-status-card" id="home-queue-status">
+            <p class="meta">Queue status</p>
+            <div class="queue-status-row">
+              <p class="queue-count-text">Loading queue…</p>
+              <button
+                class="danger load-queue-btn"
+                id="home-load-queue-btn"
+                type="button"
+              >
+                Load Songs from a Playlist
+              </button>
+              <button
+                class="ghost clear-queue-btn"
+                id="home-clear-queue-btn"
+                type="button"
+              >
+                Clear queue
+              </button>
+            </div>
+          </div>
         </div>
       </header>
     </main>
@@ -161,4 +170,5 @@
     <script src="app.js"></script>
   </body>
 </html>
+
 
