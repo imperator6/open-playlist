@@ -26,26 +26,60 @@ body {
 .page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: 32px 20px 120px;
 }
 
 .menu {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom));
+  background: rgba(16, 18, 22, 0.95);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 0;
+  z-index: 100;
 }
 
 .menu a {
   text-decoration: none;
   color: var(--muted);
-  padding: 0.625rem 1rem;
-  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.95rem;
-  min-height: 2.75rem;
-  display: inline-flex;
-  align-items: center;
+  font-size: 0.85rem;
+  min-height: 2.5rem;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.menu a .menu-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: inline-block;
+}
+
+.menu a .menu-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 .menu a.active {
@@ -93,6 +127,115 @@ h1 {
 .panel h2 {
   margin: 0 0 16px;
   font-size: 1.2rem;
+}
+
+.home-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-track {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.9rem;
+  align-items: center;
+  background: rgba(15, 17, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.home-cover {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: #101317;
+  display: grid;
+  place-items: center;
+}
+
+.home-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-track-info h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.home-track-info .artist {
+  margin: 0;
+}
+
+.home-controls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.home-play-toggle {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(30, 215, 96, 0.12);
+  color: var(--accent);
+}
+
+.home-play-toggle .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-block;
+}
+
+.home-play-toggle svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.home-progress {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.home-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.home-progress-bar {
+  width: 100%;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+}
+
+.home-progress-bar::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+}
+
+.home-progress-bar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
 }
 
 .field {
@@ -767,11 +910,16 @@ h1 {
 
 @media (max-width: 640px) {
   .page {
-    padding: 32px 18px 48px;
+    padding: 28px 16px 120px;
   }
 
   .panel {
     order: 2;
+  }
+
+  .home-controls {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 
   #playlist-search-form {

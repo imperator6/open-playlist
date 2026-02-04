@@ -163,7 +163,7 @@ function formatRemainingFromMs(remainingMs) {
 
 function updateRemainingDisplay() {
   if (!remainingState) return;
-  const meta = nowPlaying.querySelector(".queue-card .meta");
+  const meta = nowPlaying ? nowPlaying.querySelector(".queue-card .meta") : null;
   let remainingMs = remainingState.remainingMs;
   if (remainingState.isPlaying) {
     const elapsed = Date.now() - remainingState.startedAt;
@@ -412,8 +412,10 @@ function renderPlayback(data) {
     if (playbackHint) {
       playbackHint.textContent = "No active playback found.";
     }
-    nowPlaying.innerHTML =
-      '<p class="subtle">Nothing is playing right now.</p>';
+    if (nowPlaying) {
+      nowPlaying.innerHTML =
+        '<p class="subtle">Nothing is playing right now.</p>';
+    }
     if (remainingTimerId) {
       clearInterval(remainingTimerId);
       remainingTimerId = null;
@@ -441,12 +443,16 @@ function renderPlayback(data) {
 
   const current = parseTrack(currentItem);
   currentPlaybackId = current?.id || null;
-  nowPlaying.innerHTML = "";
+  if (nowPlaying) {
+    nowPlaying.innerHTML = "";
+  }
   const remainingText = formatRemainingTime(playback, currentItem);
   lastRemainingText = remainingText || "";
-  nowPlaying.appendChild(
-    createQueueCard(current, "Now playing", 0, isPlaying, remainingText)
-  );
+  if (nowPlaying) {
+    nowPlaying.appendChild(
+      createQueueCard(current, "Now playing", 0, isPlaying, remainingText)
+    );
+  }
   if (remainingTimerId) {
     clearInterval(remainingTimerId);
     remainingTimerId = null;
@@ -579,10 +585,14 @@ async function fetchPlayback() {
       }
       const text = await response.text();
       console.error("Playback fetch failed", response.status, text);
-      playbackStatus.textContent = "Disconnected";
-      playbackStatus.style.color = "#ff7a6c";
-      playbackHint.textContent =
-        "Connect Spotify on the Session page to load playback.";
+      if (playbackStatus) {
+        playbackStatus.textContent = "Disconnected";
+        playbackStatus.style.color = "#ff7a6c";
+      }
+      if (playbackHint) {
+        playbackHint.textContent =
+          "Connect Spotify on the Session page to load playback.";
+      }
       return;
     }
 
@@ -590,9 +600,13 @@ async function fetchPlayback() {
     renderPlayback(data);
   } catch (error) {
     console.error("Playback fetch error", error);
-    playbackStatus.textContent = "Error";
-    playbackStatus.style.color = "#ff7a6c";
-    playbackHint.textContent = "Unable to load playback right now.";
+    if (playbackStatus) {
+      playbackStatus.textContent = "Error";
+      playbackStatus.style.color = "#ff7a6c";
+    }
+    if (playbackHint) {
+      playbackHint.textContent = "Unable to load playback right now.";
+    }
   }
 }
 

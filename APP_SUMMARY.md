@@ -4,16 +4,17 @@
 A lightweight Spotify host app that connects to Spotify, manages a waiting-list playlist, and provides search, queue control, and recently played views.
 
 ## Pages
-- `index.html`: Search for tracks/albums/artists and view results.
+- `index.html`: Home + full playback controls (play/pause, progress, remaining, autoplay, device).
 - `playlist.html`: Choose the waiting-list playlist, start playback, and search public playlists.
-- `queue.html`: View now playing, reorder queue, add/remove tracks, and control playback.
+- `queue.html`: Reorder the waiting list, add/remove tracks, and control queue placement.
 - `recently.html`: View recently played tracks and add one as next in the queue.
 - `session.html`: Connect/disconnect Spotify and view session details.
 
 ## Key Client Flows
 - Clients only call local server endpoints (`/api/...`). No direct Spotify Web API calls.
-- Queue page polls `/api/queue` for cached playback/queue data and `/api/queue/playlist` for the server-managed waiting list.
+- Home and queue pages poll `/api/queue` for cached playback/queue data; queue also polls `/api/queue/playlist` for the server-managed waiting list.
 - Recently played page calls `/api/recently-played` and can add a track via `/api/queue/playlist/add`.
+- Navigation is a fixed bottom iOS-style tab bar with icons (home uses home, playlist uses import, queue uses play); labels are provided via tooltips and screen-reader text.
 
 ## Server Responsibilities
 - OAuth flow + token refresh; tokens stored in `session_store.json`.

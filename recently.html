@@ -9,11 +9,46 @@
   <body>
     <main class="page">
       <nav class="menu" aria-label="Primary">
-        <a href="index.html">Search</a>
-        <a href="playlist.html">Playlist</a>
-        <a href="queue.html">Waiting List</a>
-        <a href="recently.html" class="active">Recently Played</a>
-        <a href="session.html">Session</a>
+        <a href="index.html" aria-label="Home" title="Home">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3l9 8h-3v9a1 1 0 0 1-1 1h-4v-6h-2v6H7a1 1 0 0 1-1-1v-9H3l9-8z"></path>
+            </svg>
+          </span>
+          <span class="sr-only">Home</span>
+        </a>
+        <a href="playlist.html" aria-label="Playlist" title="Playlist">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a1 1 0 0 1 1 1v8.17l2.59-2.58a1 1 0 1 1 1.41 1.41l-4.3 4.3a1 1 0 0 1-1.4 0l-4.3-4.3a1 1 0 1 1 1.41-1.41L11 12.17V4a1 1 0 0 1 1-1zm-7 12a1 1 0 0 1 1 1v2h12v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"></path>
+            </svg>
+          </span>
+          <span class="sr-only">Playlist</span>
+        </a>
+        <a href="queue.html" aria-label="Waiting List" title="Waiting List">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M8 5l11 7-11 7z"></path>
+            </svg>
+          </span>
+          <span class="sr-only">Waiting List</span>
+        </a>
+        <a href="recently.html" class="active" aria-label="Recently Played" title="Recently Played">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 4a8 8 0 1 1-7.32 4.8a1 1 0 1 1 1.86.74A6 6 0 1 0 12 6a1 1 0 1 1 0-2zm-1 3a1 1 0 0 1 1 1v4.2l3 1.7a1 1 0 1 1-1 1.74l-3.5-2A1 1 0 0 1 11 12V8a1 1 0 0 1 1-1z"></path>
+            </svg>
+          </span>
+          <span class="sr-only">Recently Played</span>
+        </a>
+        <a href="session.html" aria-label="Session" title="Session">
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9a2 2 0 0 1-.94.44V11a2 2 0 1 1-2 0V8.7a2 2 0 0 1-.94-.44l-2 .9a2 2 0 1 1-1-1.73l2-.9A2 2 0 0 1 12 3zm0 6a1 1 0 1 0 0 2a1 1 0 0 0 0-2zm7 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 19 12zm-14 0a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 5 12zm7 7a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9A2 2 0 0 1 12 19zm0 0a2 2 0 0 1-2 2c0 .18.02.36.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 10 19z"></path>
+            </svg>
+          </span>
+          <span class="sr-only">Session</span>
+        </a>
       </nav>
 
       <header class="queue-hero">
@@ -73,3 +108,8 @@
     <script src="recently.js"></script>
   </body>
 </html>
+
+
+
+
+
