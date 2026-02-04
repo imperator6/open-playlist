@@ -260,6 +260,7 @@ function parseTrack(track) {
 function createQueueCard(item, label, index, isPlaying, remainingText) {
   const node = queueCardTemplate.content.cloneNode(true);
   const card = node.querySelector(".queue-card");
+  const cover = node.querySelector(".cover");
   const img = node.querySelector("img");
   const meta = node.querySelector(".meta");
   const title = node.querySelector("h3");
@@ -282,6 +283,12 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
 
   if (isPlaying) {
     card.classList.add("is-playing");
+    if (cover) {
+      const activity = document.createElement("span");
+      activity.className = "activity";
+      activity.setAttribute("aria-hidden", "true");
+      card.insertBefore(activity, cover);
+    }
   }
 
   if (label === "Now playing") {

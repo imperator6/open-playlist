@@ -800,9 +800,21 @@ body.overlay-open {
   gap: 0.75rem;
 }
 
-.queue-card {
+.queue-card.is-current {
   display: grid;
-  grid-template-columns: 1.25rem 4rem 1fr auto auto auto;
+  grid-template-columns: 4rem 1fr auto auto auto;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--card);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  align-items: center;
+  cursor: grab;
+}
+
+.queue-card:not(.is-current) {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto auto auto;
   gap: 0.75rem;
   padding: 0.75rem;
   background: var(--card);
@@ -825,7 +837,7 @@ body.overlay-open {
   letter-spacing: 0.08em;
 }
 
-.queue-card .cover {
+.queue-card.is-current .cover {
   width: 4rem;
   aspect-ratio: 1 / 1;
   border-radius: 0.75rem;
@@ -833,7 +845,15 @@ body.overlay-open {
   background: #101317;
 }
 
-.queue-card .activity {
+.queue-card:not(.is-current) .cover {
+  width: 4rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #101317;
+}
+
+.queue-card.is-current .activity {
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 999px;
@@ -843,8 +863,18 @@ body.overlay-open {
   background: rgba(30, 215, 96, 0.15);
 }
 
-.queue-card .activity::before,
-.queue-card .activity::after {
+.queue-card:not(.is-current) .activity {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  background: rgba(30, 215, 96, 0.15);
+}
+
+.queue-card.is-current .activity::before,
+.queue-card.is-current .activity::after {
   content: "";
   display: block;
   width: 0.2rem;
@@ -855,46 +885,110 @@ body.overlay-open {
   animation: equalize 1s ease-in-out infinite;
 }
 
-.queue-card .activity::after {
+.queue-card:not(.is-current) .activity::before,
+.queue-card:not(.is-current) .activity::after {
+  content: "";
+  display: block;
+  width: 0.2rem;
+  height: 0.6rem;
+  background: var(--accent);
+  border-radius: 999px;
+  margin: 0 0.05rem;
+  animation: equalize 1s ease-in-out infinite;
+}
+
+.queue-card.is-current .activity::after {
   animation-delay: 0.2s;
 }
 
-.queue-card.is-playing {
+.queue-card:not(.is-current) .activity::after {
+  animation-delay: 0.2s;
+}
+.queue-card.is-current.is-playing {
+  grid-template-columns: 1.25rem 4rem 1fr auto auto auto;
   background: rgba(30, 215, 96, 0.12);
   border-color: rgba(30, 215, 96, 0.4);
 }
 
-.queue-card.is-playing .activity {
+.queue-card:not(.is-current).is-playing {
+  grid-template-columns: 1.25rem 4rem 1fr auto auto auto;
+  background: rgba(30, 215, 96, 0.12);
+  border-color: rgba(30, 215, 96, 0.4);
+}
+
+.queue-card.is-current.is-playing .activity {
   opacity: 1;
 }
 
-.queue-body h3 {
+.queue-card:not(.is-current).is-playing .activity {
+  opacity: 1;
+}
+
+.queue-card.is-current .queue-body h3 {
   margin: 0 0 4px;
   font-size: 1rem;
 }
 
-.queue-body .artist {
+.queue-card.is-current .queue-body .artist {
   font-size: 0.85rem;
 }
 
-.queue-card.dragging {
+.queue-card:not(.is-current) .queue-body h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.queue-card:not(.is-current) .queue-body .artist {
+  font-size: 0.85rem;
+}
+
+.queue-card.is-current.dragging {
   opacity: 0.6;
   cursor: grabbing;
 }
 
-.queue-card button {
+.queue-card:not(.is-current).dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+}
+
+.queue-card.is-current button {
   min-height: 2.25rem;
 }
 
-.queue-card .ghost {
+.queue-card:not(.is-current) button {
+  min-height: 2.25rem;
+}
+
+.queue-card.is-current .ghost {
   padding: 0.5rem 0.9rem;
 }
 
-.queue-card.no-action {
+.queue-card:not(.is-current) .ghost {
+  padding: 0.5rem 0.9rem;
+}
+
+.queue-card.is-current.no-action {
+  grid-template-columns: 4rem 1fr auto auto;
+}
+
+.queue-card:not(.is-current).no-action {
+  grid-template-columns: 4rem 1fr auto auto;
+}
+
+.queue-card.is-current.is-playing.no-action {
   grid-template-columns: 1.25rem 4rem 1fr auto auto;
 }
 
-.queue-card.no-action .placement-only {
+.queue-card:not(.is-current).is-playing.no-action {
+  grid-template-columns: 1.25rem 4rem 1fr auto auto;
+}
+
+.queue-card.is-current.no-action .placement-only {
+  display: none;
+}
+
+.queue-card:not(.is-current).no-action .placement-only {
   display: none;
 }
 
@@ -995,7 +1089,12 @@ body.overlay-open {
   color: var(--accent);
 }
 
-.queue-card.drop-target {
+.queue-card.is-current.drop-target {
+  outline: 2px dashed rgba(30, 215, 96, 0.6);
+  outline-offset: 4px;
+}
+
+.queue-card:not(.is-current).drop-target {
   outline: 2px dashed rgba(30, 215, 96, 0.6);
   outline-offset: 4px;
 }
@@ -1047,11 +1146,43 @@ body.overlay-open {
     grid-template-columns: 1fr;
   }
 
-  .queue-card {
-    grid-template-columns: 1.25rem 3.5rem 1fr auto auto auto;
+  .queue-card.is-current {
+    grid-template-columns: 3.5rem 1fr auto auto auto;
   }
 
-  .queue-card .cover {
+  .queue-card:not(.is-current) {
+    grid-template-columns: 3.5rem 1fr auto auto auto;
+  }
+
+  .queue-card.is-current.is-playing {
+    grid-template-columns: 1.1rem 3.5rem 1fr auto auto auto;
+  }
+
+  .queue-card:not(.is-current).is-playing {
+    grid-template-columns: 1.1rem 3.5rem 1fr auto auto auto;
+  }
+
+  .queue-card.is-current.no-action {
+    grid-template-columns: 3.5rem 1fr auto auto;
+  }
+
+  .queue-card:not(.is-current).no-action {
+    grid-template-columns: 3.5rem 1fr auto auto;
+  }
+
+  .queue-card.is-current.is-playing.no-action {
+    grid-template-columns: 1.1rem 3.5rem 1fr auto auto;
+  }
+
+  .queue-card:not(.is-current).is-playing.no-action {
+    grid-template-columns: 1.1rem 3.5rem 1fr auto auto;
+  }
+
+  .queue-card.is-current .cover {
+    width: 3.5rem;
+  }
+
+  .queue-card:not(.is-current) .cover {
     width: 3.5rem;
   }
 
