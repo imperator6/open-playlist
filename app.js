@@ -367,7 +367,6 @@ async function updateHomeAutoplay(enabled) {
 
 fetchStatus();
 fetchHomePlayback();
-fetchHomeDevices();
 fetchHomeAutoplay();
 startHomePlaybackLongPoll();
 startHomeDevicesLongPoll();

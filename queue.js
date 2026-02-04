@@ -35,6 +35,7 @@ let remainingState = null;
 let lastRemainingText = "";
 let selectedDeviceId = null;
 let playbackSince = null;
+let devicesSince = null;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -114,6 +115,38 @@ async function fetchDevices() {
   } catch (error) {
     console.error("Devices fetch error", error);
     setDeviceStatus("Unable to load devices.");
+  }
+}
+
+async function startDevicesLongPoll() {
+  if (!deviceSelect) return;
+  try {
+    const query = devicesSince ? `?since=${encodeURIComponent(devicesSince)}` : "";
+    const response = await fetch(`/api/player/devices/stream${query}`);
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Devices stream failed", response.status, text);
+      setDeviceStatus("Unable to load devices.");
+      setTimeout(startDevicesLongPoll, 2000);
+      return;
+    }
+
+    const data = await response.json();
+    devicesSince = data.updatedAt || new Date().toISOString();
+    const devices = Array.isArray(data.devices) ? data.devices : [];
+    const active = devices.find((device) => device.is_active);
+    if (!selectedDeviceId && active) {
+      selectedDeviceId = active.id;
+    }
+    renderDeviceOptions(devices, active ? active.id : null);
+    startDevicesLongPoll();
+  } catch (error) {
+    console.error("Devices stream error", error);
+    setTimeout(startDevicesLongPoll, 2000);
   }
 }
 
@@ -1036,9 +1069,9 @@ clearSearchBtn.addEventListener("click", () => {
 fetchPlayback();
 startPlaybackLongPoll();
 fetchDefaultPlaylistId().then(fetchPlaylists);
-fetchDevices();
+startDevicesLongPoll();
 setInterval(() => {
-  fetchDevices();
+  // Device updates are now long-polled.
 }, 15000);
 setInterval(async () => {
   if (!isDragging && !isReordering && !placementTrack) {

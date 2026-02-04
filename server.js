@@ -45,6 +45,12 @@ const sharedPlaybackCache = {
   lastError: null
 };
 const playbackSubscribers = [];
+const sharedDevicesCache = {
+  devices: [],
+  updatedAt: null,
+  lastError: null
+};
+const deviceSubscribers = [];
 const SERVICE_NAME = "spotify-server";
 
 function writeLog(line, isError) {
@@ -440,6 +446,42 @@ function updatePlaybackCachePlaying(isPlaying) {
   notifyPlaybackSubscribers();
 }
 
+async function refreshDevicesCache() {
+  if (!(await ensureValidToken(sharedSession))) {
+    sharedDevicesCache.lastError = "Not connected";
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://api.spotify.com/v1/me/player/devices", {
+      headers: {
+        Authorization: `Bearer ${sharedSession.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify devices fetch failed", {
+        status: response.status,
+        body: text
+      });
+      sharedDevicesCache.lastError = "Devices request failed";
+      return false;
+    }
+
+    const data = await response.json();
+    sharedDevicesCache.devices = Array.isArray(data.devices) ? data.devices : [];
+    sharedDevicesCache.updatedAt = new Date().toISOString();
+    sharedDevicesCache.lastError = null;
+    notifyDeviceSubscribers();
+    return true;
+  } catch (error) {
+    logWarn("Spotify devices cache refresh failed", null, error);
+    sharedDevicesCache.lastError = "Devices refresh failed";
+    return false;
+  }
+}
+
 function notifyPlaybackSubscribers() {
   if (!playbackSubscribers.length) return;
   const payload = {
@@ -460,6 +502,21 @@ function notifyPlaybackSubscribers() {
   });
 }
 
+function notifyDeviceSubscribers() {
+  if (!deviceSubscribers.length) return;
+  const payload = {
+    devices: sharedDevicesCache.devices,
+    updatedAt: sharedDevicesCache.updatedAt,
+    lastError: sharedDevicesCache.lastError
+  };
+
+  const subscribers = deviceSubscribers.splice(0, deviceSubscribers.length);
+  subscribers.forEach(({ res, timeoutId }) => {
+    clearTimeout(timeoutId);
+    sendJson(res, 200, payload);
+  });
+}
+
 const PLAYBACK_CACHE_INTERVAL_MS = 8000;
 const PLAYBACK_CACHE_STALE_MS = 15000;
 setInterval(() => {
@@ -471,6 +528,17 @@ setInterval(() => {
     logWarn("Playback cache refresh failed", null, err);
   });
 }, PLAYBACK_CACHE_INTERVAL_MS);
+
+const DEVICES_CACHE_INTERVAL_MS = 15000;
+setInterval(() => {
+  if (!sharedSession.token && !sharedSession.refreshToken) {
+    sharedDevicesCache.lastError = "Not connected";
+    return;
+  }
+  refreshDevicesCache().catch((err) => {
+    logWarn("Devices cache refresh failed", null, err);
+  });
+}, DEVICES_CACHE_INTERVAL_MS);
 
 async function playTrackUri(uri, deviceId) {
   const query = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
@@ -1301,23 +1369,56 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { error: "Not connected" });
     }
 
-    const response = await fetch("https://api.spotify.com/v1/me/player/devices", {
-      headers: {
-        Authorization: `Bearer ${sharedSession.token}`
-      }
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      logError("Spotify devices fetch failed", {
-        status: response.status,
-        body: text
-      });
-      return sendJson(res, 502, { error: "Spotify request failed" });
+    if (!sharedDevicesCache.updatedAt) {
+      await refreshDevicesCache();
     }
 
-    const data = await response.json();
-    return sendJson(res, 200, data);
+    return sendJson(res, 200, {
+      devices: sharedDevicesCache.devices,
+      updatedAt: sharedDevicesCache.updatedAt,
+      lastError: sharedDevicesCache.lastError
+    });
+  }
+
+  if (pathname === "/api/player/devices/stream") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const since = url.searchParams.get("since");
+    const sinceMs = since ? Date.parse(since) : null;
+    if (
+      sharedDevicesCache.updatedAt &&
+      (!sinceMs || Date.parse(sharedDevicesCache.updatedAt) > sinceMs)
+    ) {
+      return sendJson(res, 200, {
+        devices: sharedDevicesCache.devices,
+        updatedAt: sharedDevicesCache.updatedAt,
+        lastError: sharedDevicesCache.lastError
+      });
+    }
+
+    const timeoutId = setTimeout(() => {
+      const index = deviceSubscribers.findIndex((item) => item.res === res);
+      if (index >= 0) {
+        deviceSubscribers.splice(index, 1);
+      }
+      sendJson(res, 200, {
+        devices: sharedDevicesCache.devices,
+        updatedAt: sharedDevicesCache.updatedAt,
+        lastError: sharedDevicesCache.lastError
+      });
+    }, 25000);
+
+    deviceSubscribers.push({ res, timeoutId });
+    res.on("close", () => {
+      const index = deviceSubscribers.findIndex((item) => item.res === res);
+      if (index >= 0) {
+        clearTimeout(deviceSubscribers[index].timeoutId);
+        deviceSubscribers.splice(index, 1);
+      }
+    });
+    return;
   }
 
   if (pathname === "/api/player/transfer") {
@@ -1361,6 +1462,16 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.activeDeviceName = body.deviceName || null;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
+
+    if (Array.isArray(sharedDevicesCache.devices) && sharedDevicesCache.devices.length) {
+      sharedDevicesCache.devices = sharedDevicesCache.devices.map((device) => ({
+        ...device,
+        is_active: device.id === deviceId
+      }));
+      sharedDevicesCache.updatedAt = new Date().toISOString();
+      sharedDevicesCache.lastError = null;
+      notifyDeviceSubscribers();
+    }
 
     return sendJson(res, 200, { ok: true });
   }
