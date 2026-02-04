@@ -18,6 +18,7 @@ let homeSelectedDeviceId = null;
 let homeProgressTimer = null;
 let homeProgressState = null;
 let homePlaybackSince = null;
+let homeDevicesSince = null;
 
 function setStatus(text) {
   if (statusText) {
@@ -296,6 +297,38 @@ async function fetchHomeDevices() {
   }
 }
 
+async function startHomeDevicesLongPoll() {
+  if (!homeDeviceSelect) return;
+  try {
+    const query = homeDevicesSince ? `?since=${encodeURIComponent(homeDevicesSince)}` : "";
+    const response = await fetch(`/api/player/devices/stream${query}`);
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = MENU_SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Home devices stream failed", response.status, text);
+      setHomeDeviceStatus("Unable to load devices.");
+      setTimeout(startHomeDevicesLongPoll, 2000);
+      return;
+    }
+
+    const data = await response.json();
+    homeDevicesSince = data.updatedAt || new Date().toISOString();
+    const devices = Array.isArray(data.devices) ? data.devices : [];
+    const active = devices.find((device) => device.is_active);
+    if (!homeSelectedDeviceId && active) {
+      homeSelectedDeviceId = active.id;
+    }
+    renderHomeDevices(devices);
+    startHomeDevicesLongPoll();
+  } catch (error) {
+    console.error("Home devices stream error", error);
+    setTimeout(startHomeDevicesLongPoll, 2000);
+  }
+}
+
 async function fetchHomeAutoplay() {
   if (!homeAutoplayToggle) return;
   try {
@@ -337,8 +370,9 @@ fetchHomePlayback();
 fetchHomeDevices();
 fetchHomeAutoplay();
 startHomePlaybackLongPoll();
+startHomeDevicesLongPoll();
 setInterval(() => {
-  fetchHomeDevices();
+  // Device updates are now long-polled.
 }, HOME_REFRESH_MS);
 
 if (homeAutoplayToggle) {
