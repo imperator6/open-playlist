@@ -44,6 +44,7 @@ const sharedPlaybackCache = {
   updatedAt: null,
   lastError: null
 };
+const playbackSubscribers = [];
 const SERVICE_NAME = "spotify-server";
 
 function writeLog(line, isError) {
@@ -395,12 +396,68 @@ async function refreshPlaybackCache() {
     sharedPlaybackCache.queue = queue;
     sharedPlaybackCache.updatedAt = new Date().toISOString();
     sharedPlaybackCache.lastError = null;
+    notifyPlaybackSubscribers();
     return true;
   } catch (error) {
     logWarn("Spotify playback cache refresh failed", null, error);
     sharedPlaybackCache.lastError = "Playback refresh failed";
     return false;
   }
+}
+
+function updatePlaybackCachePlaying(isPlaying) {
+  if (!sharedPlaybackCache.playback) {
+    sharedPlaybackCache.updatedAt = new Date().toISOString();
+    sharedPlaybackCache.lastError = null;
+    notifyPlaybackSubscribers();
+    return;
+  }
+
+  const now = Date.now();
+  const playback = sharedPlaybackCache.playback;
+  const previousTimestamp = typeof playback.timestamp === "number"
+    ? playback.timestamp
+    : now;
+  const previousProgress = typeof playback.progress_ms === "number"
+    ? playback.progress_ms
+    : 0;
+
+  if (!playback.is_playing && isPlaying) {
+    playback.is_playing = true;
+    playback.timestamp = now;
+  } else if (playback.is_playing && !isPlaying) {
+    const elapsed = Math.max(0, now - previousTimestamp);
+    playback.progress_ms = previousProgress + elapsed;
+    playback.is_playing = false;
+    playback.timestamp = now;
+  } else {
+    playback.is_playing = Boolean(isPlaying);
+    playback.timestamp = now;
+  }
+
+  sharedPlaybackCache.updatedAt = new Date().toISOString();
+  sharedPlaybackCache.lastError = null;
+  notifyPlaybackSubscribers();
+}
+
+function notifyPlaybackSubscribers() {
+  if (!playbackSubscribers.length) return;
+  const payload = {
+    playback: sharedPlaybackCache.playback,
+    queue: sharedPlaybackCache.queue,
+    updatedAt: sharedPlaybackCache.updatedAt,
+    lastError: sharedPlaybackCache.lastError,
+    stale:
+      !sharedPlaybackCache.updatedAt ||
+      Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
+        PLAYBACK_CACHE_STALE_MS
+  };
+
+  const subscribers = playbackSubscribers.splice(0, playbackSubscribers.length);
+  subscribers.forEach(({ res, timeoutId }) => {
+    clearTimeout(timeoutId);
+    sendJson(res, 200, payload);
+  });
 }
 
 const PLAYBACK_CACHE_INTERVAL_MS = 8000;
@@ -942,6 +999,59 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (pathname === "/api/queue/stream") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const since = url.searchParams.get("since");
+    const sinceMs = since ? Date.parse(since) : null;
+    if (
+      sharedPlaybackCache.updatedAt &&
+      (!sinceMs || Date.parse(sharedPlaybackCache.updatedAt) > sinceMs)
+    ) {
+      const stale =
+        !sharedPlaybackCache.updatedAt ||
+        Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
+          PLAYBACK_CACHE_STALE_MS;
+      return sendJson(res, 200, {
+        playback: sharedPlaybackCache.playback,
+        queue: sharedPlaybackCache.queue,
+        updatedAt: sharedPlaybackCache.updatedAt,
+        lastError: sharedPlaybackCache.lastError,
+        stale
+      });
+    }
+
+    const timeoutId = setTimeout(() => {
+      const index = playbackSubscribers.findIndex((item) => item.res === res);
+      if (index >= 0) {
+        playbackSubscribers.splice(index, 1);
+      }
+      const stale =
+        !sharedPlaybackCache.updatedAt ||
+        Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
+          PLAYBACK_CACHE_STALE_MS;
+      sendJson(res, 200, {
+        playback: sharedPlaybackCache.playback,
+        queue: sharedPlaybackCache.queue,
+        updatedAt: sharedPlaybackCache.updatedAt,
+        lastError: sharedPlaybackCache.lastError,
+        stale
+      });
+    }, 25000);
+
+    playbackSubscribers.push({ res, timeoutId });
+    res.on("close", () => {
+      const index = playbackSubscribers.findIndex((item) => item.res === res);
+      if (index >= 0) {
+        clearTimeout(playbackSubscribers[index].timeoutId);
+        playbackSubscribers.splice(index, 1);
+      }
+    });
+    return;
+  }
+
   if (pathname === "/api/recently-played") {
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
@@ -1131,6 +1241,12 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Spotify request failed" });
     }
 
+    if (sharedPlaybackCache.playback) {
+      sharedPlaybackCache.playback.progress_ms = 0;
+      sharedPlaybackCache.playback.timestamp = Date.now();
+    }
+    updatePlaybackCachePlaying(true);
+
     if (trackId && Array.isArray(sharedQueue.tracks)) {
       const index = sharedQueue.tracks.findIndex((track) => track.id === trackId);
       if (index >= 0) {
@@ -1172,6 +1288,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Spotify request failed" });
     }
 
+    updatePlaybackCachePlaying(false);
     sharedQueue.autoPlayEnabled = false;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
@@ -1275,6 +1392,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Spotify request failed" });
     }
 
+    updatePlaybackCachePlaying(true);
     sharedQueue.autoPlayEnabled = true;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
@@ -1781,6 +1899,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 502, { error: "Spotify request failed" });
     }
 
+    if (sharedPlaybackCache.playback) {
+      sharedPlaybackCache.playback.progress_ms = 0;
+      sharedPlaybackCache.playback.timestamp = Date.now();
+    }
+    updatePlaybackCachePlaying(true);
     return sendJson(res, 200, { ok: true });
   }
 

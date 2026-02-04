@@ -1,4 +1,3 @@
-const statusText = document.getElementById("status-text");
 const homePlaybackStatus = document.getElementById("home-playback-status");
 const homePlaybackHint = document.getElementById("home-playback-hint");
 const homeAutoplayToggle = document.getElementById("home-autoplay-toggle");
@@ -18,6 +17,7 @@ const HOME_REFRESH_MS = 8000;
 let homeSelectedDeviceId = null;
 let homeProgressTimer = null;
 let homeProgressState = null;
+let homePlaybackSince = null;
 
 function setStatus(text) {
   if (statusText) {
@@ -121,6 +121,73 @@ async function fetchStatus() {
   }
 }
 
+function applyHomePlaybackPayload(data) {
+  const playback = data.playback;
+  const queuePlayback = data.queue?.currently_playing || null;
+  const currentItem = playback?.item || queuePlayback;
+  if (!currentItem) {
+    setHomePlaybackStatus("Paused", false);
+    setHomePlaybackHint("No active playback found.");
+    renderHomeTrackDetails(null);
+    if (homeProgressBar) {
+      homeProgressBar.value = "0";
+      homeProgressBar.max = "100";
+    }
+    if (homeElapsed) homeElapsed.textContent = "0:00";
+    if (homeRemaining) homeRemaining.textContent = "-0:00";
+    if (homeProgressTimer) {
+      clearInterval(homeProgressTimer);
+      homeProgressTimer = null;
+    }
+    homeProgressState = null;
+    return;
+  }
+
+  const isPlaying =
+    typeof playback?.is_playing === "boolean"
+      ? playback.is_playing
+      : Boolean(data.queue && data.queue.is_playing);
+  setHomePlaybackStatus(isPlaying ? "Playing" : "Paused", isPlaying);
+  setHomePlaybackHint(
+    isPlaying ? "Audio is live right now." : "Playback is currently paused."
+  );
+  const track = parseTrack(currentItem);
+  renderHomeTrackDetails(track);
+
+  const durationMs =
+    typeof currentItem.duration_ms === "number" ? currentItem.duration_ms : 0;
+  const progressMs =
+    typeof playback?.progress_ms === "number" ? playback.progress_ms : 0;
+  if (durationMs > 0) {
+    homeProgressState = {
+      durationMs,
+      progressMs,
+      isPlaying,
+      startedAt: Date.now()
+    };
+    updateHomeProgress();
+    if (homeProgressTimer) {
+      clearInterval(homeProgressTimer);
+    }
+    homeProgressTimer = setInterval(() => {
+      updateHomeProgress();
+    }, 1000);
+  }
+
+  if (homePlayToggle) {
+    const icon = homePlayToggle.querySelector(".icon");
+    if (icon) {
+      icon.innerHTML = isPlaying
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>';
+    }
+    homePlayToggle.setAttribute(
+      "aria-label",
+      isPlaying ? "Pause" : "Play"
+    );
+  }
+}
+
 async function fetchHomePlayback() {
   try {
     const response = await fetch("/api/queue");
@@ -137,74 +204,39 @@ async function fetchHomePlayback() {
     }
 
     const data = await response.json();
-    const playback = data.playback;
-    const queuePlayback = data.queue?.currently_playing || null;
-    const currentItem = playback?.item || queuePlayback;
-    if (!currentItem) {
-      setHomePlaybackStatus("Paused", false);
-      setHomePlaybackHint("No active playback found.");
-      renderHomeTrackDetails(null);
-      if (homeProgressBar) {
-        homeProgressBar.value = "0";
-        homeProgressBar.max = "100";
-      }
-      if (homeElapsed) homeElapsed.textContent = "0:00";
-      if (homeRemaining) homeRemaining.textContent = "-0:00";
-      if (homeProgressTimer) {
-        clearInterval(homeProgressTimer);
-        homeProgressTimer = null;
-      }
-      homeProgressState = null;
-      return;
-    }
-
-    const isPlaying =
-      typeof playback?.is_playing === "boolean"
-        ? playback.is_playing
-        : Boolean(data.queue && data.queue.is_playing);
-    setHomePlaybackStatus(isPlaying ? "Playing" : "Paused", isPlaying);
-    setHomePlaybackHint(
-      isPlaying ? "Audio is live right now." : "Playback is currently paused."
-    );
-    const track = parseTrack(currentItem);
-    renderHomeTrackDetails(track);
-
-    const durationMs =
-      typeof currentItem.duration_ms === "number" ? currentItem.duration_ms : 0;
-    const progressMs =
-      typeof playback?.progress_ms === "number" ? playback.progress_ms : 0;
-    if (durationMs > 0) {
-      homeProgressState = {
-        durationMs,
-        progressMs,
-        isPlaying,
-        startedAt: Date.now()
-      };
-      updateHomeProgress();
-      if (homeProgressTimer) {
-        clearInterval(homeProgressTimer);
-      }
-      homeProgressTimer = setInterval(() => {
-        updateHomeProgress();
-      }, 1000);
-    }
-
-    if (homePlayToggle) {
-      const icon = homePlayToggle.querySelector(".icon");
-      if (icon) {
-        icon.innerHTML = isPlaying
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>';
-      }
-      homePlayToggle.setAttribute(
-        "aria-label",
-        isPlaying ? "Pause" : "Play"
-      );
-    }
+    applyHomePlaybackPayload(data);
   } catch (error) {
     console.error("Home playback fetch error", error);
     setHomePlaybackStatus("Error", false);
     setHomePlaybackHint("Unable to load playback right now.");
+  }
+}
+
+async function startHomePlaybackLongPoll() {
+  if (!homePlaybackStatus) return;
+  try {
+    const query = homePlaybackSince ? `?since=${encodeURIComponent(homePlaybackSince)}` : "";
+    const response = await fetch(`/api/queue/stream${query}`);
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = MENU_SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Home playback stream failed", response.status, text);
+      setHomePlaybackStatus("Disconnected", false);
+      setHomePlaybackHint("Connect Spotify on the Session page to load playback.");
+      setTimeout(startHomePlaybackLongPoll, 2000);
+      return;
+    }
+
+    const data = await response.json();
+    homePlaybackSince = data.updatedAt || new Date().toISOString();
+    applyHomePlaybackPayload(data);
+    startHomePlaybackLongPoll();
+  } catch (error) {
+    console.error("Home playback stream error", error);
+    setTimeout(startHomePlaybackLongPoll, 2000);
   }
 }
 
@@ -304,8 +336,8 @@ fetchStatus();
 fetchHomePlayback();
 fetchHomeDevices();
 fetchHomeAutoplay();
+startHomePlaybackLongPoll();
 setInterval(() => {
-  fetchHomePlayback();
   fetchHomeDevices();
 }, HOME_REFRESH_MS);
 
@@ -352,6 +384,32 @@ if (homePlayToggle) {
   homePlayToggle.addEventListener("click", async () => {
     if (!homeProgressState) return;
     const isPlaying = homeProgressState.isPlaying;
+    const nextIsPlaying = !isPlaying;
+    if (homeProgressState) {
+      const now = Date.now();
+      if (isPlaying) {
+        homeProgressState.progressMs += now - homeProgressState.startedAt;
+      }
+      homeProgressState.isPlaying = nextIsPlaying;
+      homeProgressState.startedAt = now;
+    }
+    if (homePlayToggle) {
+      const icon = homePlayToggle.querySelector(".icon");
+      if (icon) {
+        icon.innerHTML = nextIsPlaying
+          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>';
+      }
+      homePlayToggle.setAttribute(
+        "aria-label",
+        nextIsPlaying ? "Pause" : "Play"
+      );
+    }
+    setHomePlaybackStatus(nextIsPlaying ? "Playing" : "Paused", nextIsPlaying);
+    setHomePlaybackHint(
+      nextIsPlaying ? "Audio is live right now." : "Playback is currently paused."
+    );
+    updateHomeProgress();
     try {
       const response = await fetch(
         isPlaying ? "/api/player/pause" : "/api/player/resume",
@@ -360,11 +418,13 @@ if (homePlayToggle) {
       if (!response.ok) {
         const text = await response.text();
         console.error("Home play toggle failed", response.status, text);
+        await fetchHomePlayback();
         return;
       }
       await fetchHomePlayback();
     } catch (error) {
       console.error("Home play toggle error", error);
+      await fetchHomePlayback();
     }
   });
 }

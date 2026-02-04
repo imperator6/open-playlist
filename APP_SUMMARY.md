@@ -30,7 +30,10 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 
 ## Caching & Polling
 - Server polls Spotify for playback/queue on a fixed interval and stores results in memory cache.
-- Clients poll the server for cached data; they do not poll Spotify directly.
+- Clients poll the server for cached data where needed; they do not poll Spotify directly.
+- Server updates playback cache immediately on play/pause actions so status propagates to all clients on their next poll.
+- Home play/pause button updates optimistically before the next poll, then syncs with the server result.
+- Playback updates are delivered via long-polling (`/api/queue/stream`) so clients receive server-side changes without fixed-interval polling for playback.
 
 ## Storage
 - `session_store.json`: OAuth tokens + expiry.

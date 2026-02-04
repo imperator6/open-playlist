@@ -34,6 +34,7 @@ let remainingTimerId = null;
 let remainingState = null;
 let lastRemainingText = "";
 let selectedDeviceId = null;
+let playbackSince = null;
 
 function setQueueStatus(message, showSaving) {
   if (showSaving) {
@@ -610,6 +611,39 @@ async function fetchPlayback() {
   }
 }
 
+async function startPlaybackLongPoll() {
+  try {
+    const query = playbackSince ? `?since=${encodeURIComponent(playbackSince)}` : "";
+    const response = await fetch(`/api/queue/stream${query}`);
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Playback stream failed", response.status, text);
+      if (playbackStatus) {
+        playbackStatus.textContent = "Disconnected";
+        playbackStatus.style.color = "#ff7a6c";
+      }
+      if (playbackHint) {
+        playbackHint.textContent =
+          "Connect Spotify on the Session page to load playback.";
+      }
+      setTimeout(startPlaybackLongPoll, 2000);
+      return;
+    }
+
+    const data = await response.json();
+    playbackSince = data.updatedAt || new Date().toISOString();
+    renderPlayback(data);
+    startPlaybackLongPoll();
+  } catch (error) {
+    console.error("Playback stream error", error);
+    setTimeout(startPlaybackLongPoll, 2000);
+  }
+}
+
 async function fetchDefaultPlaylistId() {
   try {
     const response = await fetch("/status");
@@ -1000,13 +1034,13 @@ clearSearchBtn.addEventListener("click", () => {
 });
 
 fetchPlayback();
+startPlaybackLongPoll();
 fetchDefaultPlaylistId().then(fetchPlaylists);
 fetchDevices();
 setInterval(() => {
   fetchDevices();
 }, 15000);
 setInterval(async () => {
-  await fetchPlayback();
   if (!isDragging && !isReordering && !placementTrack) {
     await fetchPlaylistTracks();
   }
