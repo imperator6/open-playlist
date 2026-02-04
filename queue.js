@@ -63,7 +63,7 @@ function setDeviceStatus(message) {
   deviceStatus.textContent = message || "";
 }
 
-function renderDeviceOptions(devices, activeId) {
+function renderDeviceOptions(devices, activeId, preferredId) {
   if (!deviceSelect) return;
   deviceSelect.innerHTML = "";
   if (!devices.length) {
@@ -76,12 +76,12 @@ function renderDeviceOptions(devices, activeId) {
     return;
   }
 
-  const preferredId = selectedDeviceId || activeId;
+  const effectivePreferred = preferredId || selectedDeviceId || activeId;
   devices.forEach((device) => {
     const option = document.createElement("option");
     option.value = device.id;
     option.textContent = device.name;
-    if (device.id === preferredId) {
+    if (device.id === effectivePreferred) {
       option.selected = true;
     }
     deviceSelect.appendChild(option);
@@ -111,10 +111,11 @@ async function startDevicesLongPoll() {
     devicesSince = data.updatedAt || new Date().toISOString();
     const devices = Array.isArray(data.devices) ? data.devices : [];
     const active = devices.find((device) => device.is_active);
-    if (!selectedDeviceId && active) {
-      selectedDeviceId = active.id;
+    const preferred = data.preferredDeviceId || (active ? active.id : null);
+    if (preferred && selectedDeviceId !== preferred) {
+      selectedDeviceId = preferred;
     }
-    renderDeviceOptions(devices, active ? active.id : null);
+    renderDeviceOptions(devices, active ? active.id : null, preferred);
     startDevicesLongPoll();
   } catch (error) {
     console.error("Devices stream error", error);

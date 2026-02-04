@@ -230,7 +230,7 @@ async function startHomePlaybackLongPoll() {
   }
 }
 
-function renderHomeDevices(devices) {
+function renderHomeDevices(devices, preferredId) {
   if (!homeDeviceSelect) return;
   homeDeviceSelect.innerHTML = "";
   if (!devices.length) {
@@ -244,12 +244,13 @@ function renderHomeDevices(devices) {
   }
 
   const active = devices.find((device) => device.is_active);
-  const preferredId = homeSelectedDeviceId || (active ? active.id : "");
+  const effectivePreferred =
+    preferredId || homeSelectedDeviceId || (active ? active.id : "");
   devices.forEach((device) => {
     const option = document.createElement("option");
     option.value = device.id;
     option.textContent = device.name;
-    if (device.id === preferredId) {
+    if (device.id === effectivePreferred) {
       option.selected = true;
     }
     homeDeviceSelect.appendChild(option);
@@ -279,10 +280,11 @@ async function startHomeDevicesLongPoll() {
     homeDevicesSince = data.updatedAt || new Date().toISOString();
     const devices = Array.isArray(data.devices) ? data.devices : [];
     const active = devices.find((device) => device.is_active);
-    if (!homeSelectedDeviceId && active) {
-      homeSelectedDeviceId = active.id;
+    const preferred = data.preferredDeviceId || (active ? active.id : null);
+    if (preferred && homeSelectedDeviceId !== preferred) {
+      homeSelectedDeviceId = preferred;
     }
-    renderHomeDevices(devices);
+    renderHomeDevices(devices, preferred);
     startHomeDevicesLongPoll();
   } catch (error) {
     console.error("Home devices stream error", error);

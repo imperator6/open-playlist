@@ -14,6 +14,7 @@ const AUTO_REFRESH =
 const SESSION_STORE = path.join(__dirname, "session_store.json");
 const QUEUE_STORE = path.join(__dirname, "queue_store.json");
 const DEFAULT_PLAYLIST_ID = process.env.DEFAULT_PLAYLIST_ID || "";
+const DEFAULT_DEVICE_NAME = process.env.DEFAULT_DEVICE_NAME || "";
 const REDIRECT_URI =
   process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${PORT}/callback`;
 
@@ -36,7 +37,8 @@ const sharedQueue = {
   lastAdvanceAt: null,
   lastError: null,
   activeDeviceId: null,
-  activeDeviceName: null
+  activeDeviceName: null,
+  defaultDeviceName: null
 };
 const sharedPlaybackCache = {
   playback: null,
@@ -48,7 +50,8 @@ const playbackSubscribers = [];
 const sharedDevicesCache = {
   devices: [],
   updatedAt: null,
-  lastError: null
+  lastError: null,
+  preferredDeviceId: null
 };
 const deviceSubscribers = [];
 const SERVICE_NAME = "spotify-server";
@@ -153,6 +156,7 @@ function readQueueStore() {
     sharedQueue.lastError = data.lastError || null;
     sharedQueue.activeDeviceId = data.activeDeviceId || null;
     sharedQueue.activeDeviceName = data.activeDeviceName || null;
+    sharedQueue.defaultDeviceName = data.defaultDeviceName || null;
     logInfo("Loaded queue store", {
       hasActivePlaylist: Boolean(sharedQueue.activePlaylistId),
       trackCount: sharedQueue.tracks.length,
@@ -176,7 +180,8 @@ function persistQueueStore() {
       lastAdvanceAt: sharedQueue.lastAdvanceAt,
       lastError: sharedQueue.lastError,
       activeDeviceId: sharedQueue.activeDeviceId,
-      activeDeviceName: sharedQueue.activeDeviceName
+      activeDeviceName: sharedQueue.activeDeviceName,
+      defaultDeviceName: sharedQueue.defaultDeviceName
     };
     fs.writeFileSync(QUEUE_STORE, JSON.stringify(data, null, 2));
   } catch (err) {
@@ -470,7 +475,25 @@ async function refreshDevicesCache() {
     }
 
     const data = await response.json();
-    sharedDevicesCache.devices = Array.isArray(data.devices) ? data.devices : [];
+    const devices = Array.isArray(data.devices) ? data.devices : [];
+    sharedDevicesCache.devices = devices;
+    sharedDevicesCache.preferredDeviceId = null;
+    if (devices.length) {
+      const preferredName = sharedQueue.defaultDeviceName || DEFAULT_DEVICE_NAME;
+      if (preferredName) {
+        const match = devices.find(
+          (device) =>
+            device.name &&
+            device.name.toLowerCase() === preferredName.toLowerCase()
+        );
+        if (match) {
+          sharedDevicesCache.preferredDeviceId = match.id;
+        }
+      }
+      if (!sharedDevicesCache.preferredDeviceId) {
+        sharedDevicesCache.preferredDeviceId = devices[0].id;
+      }
+    }
     sharedDevicesCache.updatedAt = new Date().toISOString();
     sharedDevicesCache.lastError = null;
     notifyDeviceSubscribers();
@@ -507,7 +530,8 @@ function notifyDeviceSubscribers() {
   const payload = {
     devices: sharedDevicesCache.devices,
     updatedAt: sharedDevicesCache.updatedAt,
-    lastError: sharedDevicesCache.lastError
+    lastError: sharedDevicesCache.lastError,
+    preferredDeviceId: sharedDevicesCache.preferredDeviceId
   };
 
   const subscribers = deviceSubscribers.splice(0, deviceSubscribers.length);
@@ -1376,7 +1400,8 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, {
       devices: sharedDevicesCache.devices,
       updatedAt: sharedDevicesCache.updatedAt,
-      lastError: sharedDevicesCache.lastError
+      lastError: sharedDevicesCache.lastError,
+      preferredDeviceId: sharedDevicesCache.preferredDeviceId
     });
   }
 
@@ -1394,7 +1419,8 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         devices: sharedDevicesCache.devices,
         updatedAt: sharedDevicesCache.updatedAt,
-        lastError: sharedDevicesCache.lastError
+        lastError: sharedDevicesCache.lastError,
+        preferredDeviceId: sharedDevicesCache.preferredDeviceId
       });
     }
 
@@ -1406,7 +1432,8 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         devices: sharedDevicesCache.devices,
         updatedAt: sharedDevicesCache.updatedAt,
-        lastError: sharedDevicesCache.lastError
+        lastError: sharedDevicesCache.lastError,
+        preferredDeviceId: sharedDevicesCache.preferredDeviceId
       });
     }, 25000);
 
@@ -1460,6 +1487,7 @@ const server = http.createServer(async (req, res) => {
 
     sharedQueue.activeDeviceId = deviceId;
     sharedQueue.activeDeviceName = body.deviceName || null;
+    sharedQueue.defaultDeviceName = body.deviceName || sharedQueue.defaultDeviceName;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
 
@@ -1470,6 +1498,7 @@ const server = http.createServer(async (req, res) => {
       }));
       sharedDevicesCache.updatedAt = new Date().toISOString();
       sharedDevicesCache.lastError = null;
+      sharedDevicesCache.preferredDeviceId = deviceId;
       notifyDeviceSubscribers();
     }
 
