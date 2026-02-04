@@ -137,6 +137,9 @@ function applyHomePlaybackPayload(data) {
   const playback = data.playback;
   const queuePlayback = data.queue?.currently_playing || null;
   const currentItem = playback?.item || queuePlayback;
+  if (homeAutoplayToggle && typeof data.autoPlayEnabled === "boolean") {
+    homeAutoplayToggle.checked = data.autoPlayEnabled;
+  }
   if (!currentItem) {
     setHomePlaybackStatus("Paused", false);
     setHomePlaybackHint("No active playback found.");
@@ -292,22 +295,6 @@ async function startHomeDevicesLongPoll() {
   }
 }
 
-async function fetchHomeAutoplay() {
-  if (!homeAutoplayToggle) return;
-  try {
-    const response = await fetch("/api/queue/playlist");
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Home autoplay fetch failed", response.status, text);
-      return;
-    }
-    const data = await response.json();
-    homeAutoplayToggle.checked = Boolean(data.autoPlayEnabled);
-  } catch (error) {
-    console.error("Home autoplay fetch error", error);
-  }
-}
-
 async function updateHomeAutoplay(enabled) {
   try {
     const response = await fetch("/api/queue/autoplay", {
@@ -329,7 +316,6 @@ async function updateHomeAutoplay(enabled) {
 
 
 fetchStatus();
-fetchHomeAutoplay();
 startHomePlaybackLongPoll();
 startHomeDevicesLongPoll();
 

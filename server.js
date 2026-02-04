@@ -512,6 +512,7 @@ function notifyPlaybackSubscribers() {
     queue: sharedPlaybackCache.queue,
     updatedAt: sharedPlaybackCache.updatedAt,
     lastError: sharedPlaybackCache.lastError,
+    autoPlayEnabled: sharedQueue.autoPlayEnabled,
     stale:
       !sharedPlaybackCache.updatedAt ||
       Date.now() - Date.parse(sharedPlaybackCache.updatedAt) >
@@ -1111,7 +1112,8 @@ const server = http.createServer(async (req, res) => {
         queue: sharedPlaybackCache.queue,
         updatedAt: sharedPlaybackCache.updatedAt,
         lastError: sharedPlaybackCache.lastError,
-        stale
+        stale,
+        autoPlayEnabled: sharedQueue.autoPlayEnabled
       });
     }
 
@@ -1129,7 +1131,8 @@ const server = http.createServer(async (req, res) => {
         queue: sharedPlaybackCache.queue,
         updatedAt: sharedPlaybackCache.updatedAt,
         lastError: sharedPlaybackCache.lastError,
-        stale
+        stale,
+        autoPlayEnabled: sharedQueue.autoPlayEnabled
       });
     }, 25000);
 
@@ -1567,6 +1570,7 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.autoPlayEnabled = enabled;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
+    notifyPlaybackSubscribers();
 
     if (enabled) {
       try {

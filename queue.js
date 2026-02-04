@@ -409,6 +409,9 @@ function renderPlayback(data) {
   const playback = data.playback;
   const queuePlayback = data.queue?.currently_playing || null;
   const currentItem = playback?.item || queuePlayback;
+  if (autoPlayToggle && typeof data.autoPlayEnabled === "boolean") {
+    autoPlayToggle.checked = data.autoPlayEnabled;
+  }
 
   if (!currentItem) {
     currentPlaybackId = null;

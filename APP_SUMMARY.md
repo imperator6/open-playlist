@@ -34,8 +34,9 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 - Server updates playback cache immediately on play/pause actions so status propagates to all clients on their next poll.
 - Home play/pause button updates optimistically before the next poll, then syncs with the server result.
 - Playback updates are delivered via long-polling (`/api/queue/stream`) so clients receive server-side changes without fixed-interval polling for playback.
+- Autoplay state changes are broadcast in the playback stream so all clients stay in sync.
 - Device updates are delivered via long-polling (`/api/player/devices/stream`) so clients receive device changes without fixed-interval polling.
-- Clients rely on the device and playback streams for the initial state instead of separate one-time fetches.
+- Clients rely on the device and playback streams for the initial state instead of separate one-time fetches, including autoplay on home.
 - Queue no longer has fallback playback/device fetch helpers; streams are the only source for those updates.
 - Home no longer has fallback playback/device fetch helpers; streams are the only source for those updates.
 
