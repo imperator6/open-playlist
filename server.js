@@ -1415,6 +1415,23 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (pathname === "/api/player/devices/refresh") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    const refreshed = await refreshDevicesCache();
+    if (!refreshed) {
+      return sendJson(res, 502, { error: "Unable to refresh devices" });
+    }
+
+    logInfo("Devices cache refreshed on demand");
+    return sendJson(res, 200, {
+      ok: true,
+      updatedAt: sharedDevicesCache.updatedAt
+    });
+  }
+
   if (pathname === "/api/player/devices/stream") {
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });

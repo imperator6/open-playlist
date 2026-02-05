@@ -3,6 +3,7 @@ const homePlaybackHint = document.getElementById("home-playback-hint");
 const homeAutoplayToggle = document.getElementById("home-autoplay-toggle");
 const homeDeviceSelect = document.getElementById("home-device-select");
 const homeDeviceStatus = document.getElementById("home-device-status");
+const homeDeviceRefreshBtn = document.getElementById("home-device-refresh");
 const homeTrackImage = document.getElementById("home-track-image");
 const homeTrackTitle = document.getElementById("home-track-title");
 const homeTrackArtist = document.getElementById("home-track-artist");
@@ -346,6 +347,33 @@ async function startHomeDevicesLongPoll() {
   }
 }
 
+async function refreshHomeDevices() {
+  if (!homeDeviceRefreshBtn) return;
+  homeDeviceRefreshBtn.disabled = true;
+  setHomeDeviceStatus("Refreshing devices...");
+  try {
+    const response = await fetch("/api/player/devices/refresh", {
+      method: "POST"
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = MENU_SESSION_PAGE;
+        return;
+      }
+      const text = await response.text();
+      console.error("Home devices refresh failed", response.status, text);
+      setHomeDeviceStatus("Unable to refresh devices.");
+      return;
+    }
+    setHomeDeviceStatus("Devices refreshed.");
+  } catch (error) {
+    console.error("Home devices refresh error", error);
+    setHomeDeviceStatus("Unable to refresh devices.");
+  } finally {
+    homeDeviceRefreshBtn.disabled = false;
+  }
+}
+
 async function updateHomeAutoplay(enabled) {
   try {
     const response = await fetch("/api/queue/autoplay", {
@@ -413,6 +441,12 @@ if (homeDeviceSelect) {
       console.error("Home device transfer error", error);
       setHomeDeviceStatus("Unable to switch device.");
     }
+  });
+}
+
+if (homeDeviceRefreshBtn) {
+  homeDeviceRefreshBtn.addEventListener("click", () => {
+    refreshHomeDevices();
   });
 }
 

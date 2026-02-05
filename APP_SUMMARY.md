@@ -6,6 +6,7 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 ## Pages
 - `index.html`: Home + full playback controls (play/pause, progress, remaining, autoplay, device) plus the waiting list queue section appended at the end of the page.
 - Home displays queue count pulled from the playback stream, shows a red "Load Songs from a Playlist" button when empty, and offers a clear-queue action when populated.
+- Home includes a manual device refresh button that forces a Spotify device refresh and broadcasts updates to all clients.
 - The waiting list section on Home lets users reorder, add/remove tracks, place search results, and control playback per item.
 - When no playback is active, Home shows a "Start playback" button that enables autoplay (disabled if the queue is empty).
 - `playlist.html`: Choose the waiting-list playlist, start playback, and search public playlists.
@@ -27,7 +28,7 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 ## Core Endpoints (Selection)
 - Auth/session: `/status`, `/api/host/connect`, `/api/host/logout`, `/callback`
 - Spotify data (server-side): `/api/playlists`, `/api/playlists/search`, `/api/recently-played`, `/api/track-search`
-- Playback control: `/api/playlists/:id/play`, `/api/track-play`, `/api/player/pause`, `/api/player/resume`, `/api/player/devices`, `/api/player/transfer`
+- Playback control: `/api/playlists/:id/play`, `/api/track-play`, `/api/player/pause`, `/api/player/resume`, `/api/player/devices`, `/api/player/devices/refresh`, `/api/player/transfer`
 - Waiting list queue: `/api/queue`, `/api/queue/playlist`, `/api/queue/playlist/load`, `/api/queue/playlist/select`, `/api/queue/playlist/add`, `/api/queue/playlist/remove`, `/api/queue/playlist/reorder`
 
 ## Caching & Polling

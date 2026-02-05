@@ -684,6 +684,27 @@ body.overlay-open {
   color: var(--text);
 }
 
+.icon-button {
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button .icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+}
+
+.icon-button svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
 .toggle input {
   position: absolute;
   opacity: 0;
