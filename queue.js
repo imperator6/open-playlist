@@ -253,7 +253,8 @@ function parseTrack(track) {
     title,
     artist,
     image: track.album?.images?.[0]?.url || track.image || "",
-    album: track.album?.name || track.album || ""
+    album: track.album?.name || track.album || "",
+    source: track.source || null
   };
 }
 
