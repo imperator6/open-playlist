@@ -151,6 +151,56 @@
           </div>
         </div>
       </header>
+      <section class="queue-section">
+        <div class="queue-header">
+          <div>
+            <h2>Up next (Playlist waiting list)</h2>
+            <p class="subtle" id="queue-status"></p>
+            <p class="error" id="queue-error" role="alert"></p>
+          </div>
+        </div>
+        <div class="queue-overlay" id="queue-overlay" aria-hidden="true">
+          <div
+            class="queue-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="queue-overlay-title"
+          >
+            <div class="queue-dialog-header">
+              <div>
+                <p class="eyebrow">Insert</p>
+                <h3 id="queue-overlay-title">Search for a song</h3>
+              </div>
+              <button
+                class="ghost queue-dialog-close"
+                type="button"
+                id="queue-overlay-close"
+                aria-label="Close search dialog"
+              >
+                Close
+              </button>
+            </div>
+            <form class="queue-search" id="queue-search-form">
+              <label class="field">
+                <span>Add tracks</span>
+                <input
+                  id="queue-search-input"
+                  type="search"
+                  placeholder="Search tracks to add"
+                  autocomplete="off"
+                />
+              </label>
+              <button class="primary" type="submit">Search</button>
+              <button class="ghost" id="clear-search-btn" type="button">
+                Clear results
+              </button>
+            </form>
+            <div class="queue-placement" id="queue-placement"></div>
+            <div class="queue-results" id="queue-results"></div>
+          </div>
+        </div>
+        <div class="queue-list" id="queue-list"></div>
+      </section>
     </main>
 
     <template id="home-now-card">
@@ -167,7 +217,60 @@
       </article>
     </template>
 
+    <template id="queue-card">
+      <article class="queue-card">
+        <div class="cover">
+          <img alt="" />
+        </div>
+        <div class="queue-body">
+          <p class="meta"></p>
+          <h3></h3>
+          <p class="artist"></p>
+        </div>
+        <div class="queue-play">
+          <button
+            class="ghost queue-remove"
+            data-action="remove"
+            type="button"
+            aria-label="Remove track"
+            title="Remove"
+          >
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+          <button class="ghost" data-action="play" type="button">Play</button>
+        </div>
+        <div class="queue-now-actions" data-now-actions>
+          <button
+            class="ghost"
+            data-action="toggle-play"
+            type="button"
+            aria-label="Pause playback"
+          >
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </article>
+      <button class="queue-insert" type="button" data-open-search>
+        Add your song here
+      </button>
+    </template>
+
+    <template id="search-card">
+      <article class="queue-card">
+        <div class="cover">
+          <img alt="" />
+        </div>
+        <div class="queue-body">
+          <p class="meta"></p>
+          <h3></h3>
+          <p class="artist"></p>
+        </div>
+        <button class="ghost" type="button">Place</button>
+      </article>
+    </template>
+
     <script src="app.js"></script>
+    <script src="queue.js"></script>
   </body>
 </html>
 
