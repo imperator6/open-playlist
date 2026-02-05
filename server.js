@@ -876,9 +876,6 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/session" || pathname === "/session.html") {
     return readStaticFile(path.join(__dirname, "session.html"), res);
   }
-  if (pathname === "/queue" || pathname === "/queue.html") {
-    return readStaticFile(path.join(__dirname, "queue.html"), res);
-  }
   if (pathname === "/recently" || pathname === "/recently.html") {
     return readStaticFile(path.join(__dirname, "recently.html"), res);
   }
