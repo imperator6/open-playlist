@@ -271,6 +271,9 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   const nowActions = node.querySelector('[data-now-actions]');
   const togglePlayButton = node.querySelector('[data-action="toggle-play"]');
   const insertButton = node.querySelector(".queue-insert");
+  const userRow = node.querySelector(".queue-user-row");
+  const userName = node.querySelector(".queue-user-name");
+  const userTime = node.querySelector(".queue-user-time");
 
   img.src = item.image;
   img.alt = item.title;
@@ -283,6 +286,17 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   card.classList.add("no-action");
   if (item.source === "user") {
     card.classList.add("is-user");
+    if (userRow) {
+      userRow.setAttribute("aria-hidden", "false");
+    }
+    if (userName) {
+      userName.textContent = "Tino";
+    }
+    if (userTime) {
+      userTime.textContent = "Time TBD";
+    }
+  } else if (userRow) {
+    userRow.setAttribute("aria-hidden", "true");
   }
 
   if (isPlaying) {

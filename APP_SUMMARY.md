@@ -10,6 +10,7 @@ A lightweight Spotify host app that connects to Spotify, manages a waiting-list 
 - The waiting list section on Home lets users reorder, add/remove tracks, place search results, and control playback per item.
 - When no playback is active, Home shows a "Start playback" button that enables autoplay (disabled if the queue is empty).
 - Queue tracks include a `source` field: `playlist` when loaded from the waiting-list playlist and `user` when added by users (search or recently played). User-sourced tracks are visually highlighted in the queue list.
+- User-sourced queue items render an extra row with a user icon, the name "Tino", and a placeholder time string for future updates.
 - `playlist.html`: Choose the waiting-list playlist, start playback, and search public playlists.
 - `recently.html`: View recently played tracks and add one as next in the queue.
 - `session.html`: Connect/disconnect Spotify and view session details.

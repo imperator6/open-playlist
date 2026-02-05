@@ -850,6 +850,35 @@ body.overlay-open {
   border-color: rgba(102, 198, 255, 0.4);
 }
 
+.queue-user-row {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.queue-user-row .icon {
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+}
+
+.queue-user-row svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.queue-user-time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-card.is-user .queue-user-row {
+  display: flex;
+}
+
 .queue-insert {
   width: 100%;
   border-radius: 1rem;
