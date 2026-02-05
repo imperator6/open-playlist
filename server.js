@@ -143,7 +143,15 @@ function readQueueStore() {
     const data = JSON.parse(raw);
     sharedQueue.activePlaylistId = data.activePlaylistId || null;
     sharedQueue.activePlaylistName = data.activePlaylistName || null;
-    sharedQueue.tracks = Array.isArray(data.tracks) ? data.tracks : [];
+    let didNormalizeSources = false;
+    sharedQueue.tracks = Array.isArray(data.tracks)
+      ? data.tracks.map((track) => {
+          if (!track || typeof track !== "object") return track;
+          if (track.source) return track;
+          didNormalizeSources = true;
+          return { ...track, source: "playlist" };
+        })
+      : [];
     sharedQueue.updatedAt = data.updatedAt || null;
     sharedQueue.currentIndex =
       Number.isInteger(data.currentIndex) && data.currentIndex >= 0
@@ -157,6 +165,10 @@ function readQueueStore() {
     sharedQueue.activeDeviceId = data.activeDeviceId || null;
     sharedQueue.activeDeviceName = data.activeDeviceName || null;
     sharedQueue.defaultDeviceName = data.defaultDeviceName || null;
+    if (didNormalizeSources) {
+      persistQueueStore();
+    }
+
     logInfo("Loaded queue store", {
       hasActivePlaylist: Boolean(sharedQueue.activePlaylistId),
       trackCount: sharedQueue.tracks.length,
@@ -1757,7 +1769,8 @@ const server = http.createServer(async (req, res) => {
           track.album && track.album.images && track.album.images[0]
             ? track.album.images[0].url
             : "",
-        album: track.album ? track.album.name : ""
+        album: track.album ? track.album.name : "",
+        source: "playlist"
       }));
 
     sharedQueue.activePlaylistId = playlistId;
@@ -1802,7 +1815,8 @@ const server = http.createServer(async (req, res) => {
       title: track.title || "Unknown title",
       artist: track.artist || "Unknown artist",
       image: track.image || "",
-      album: track.album || ""
+      album: track.album || "",
+      source: "user"
     };
 
     if (position === null || position >= sharedQueue.tracks.length) {
