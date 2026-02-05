@@ -845,6 +845,11 @@ body.overlay-open {
   cursor: grab;
 }
 
+.queue-card.is-user:not(.is-playing) {
+  background: rgba(255, 214, 102, 0.12);
+  border-color: rgba(255, 214, 102, 0.35);
+}
+
 .queue-insert {
   width: 100%;
   border-radius: 1rem;

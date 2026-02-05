@@ -280,6 +280,9 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   card.dataset.index = String(index);
   card.draggable = true;
   card.classList.add("no-action");
+  if (item.source === "user") {
+    card.classList.add("is-user");
+  }
 
   if (isPlaying) {
     card.classList.add("is-playing");
