@@ -883,6 +883,11 @@ body.overlay-open {
   gap: 0.3rem;
 }
 
+.queue-user-time {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
 .queue-card.is-user .queue-user-badge {
   display: inline-flex;
 }

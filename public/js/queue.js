@@ -189,6 +189,33 @@ async function updateAutoplayState(enabled) {
   }
 }
 
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return "";
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  if (isNaN(then)) return "";
+
+  const diffMs = now - then;
+  const diffSeconds = Math.floor(diffMs / 1000);
+
+  if (diffSeconds < 60) {
+    return `${diffSeconds}s`;
+  }
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d`;
+}
+
 function formatRemainingTime(playback, currentItem) {
   if (!playback || !currentItem) return "";
   const durationMs = currentItem.duration_ms;
@@ -253,7 +280,8 @@ function parseTrack(track) {
     artist,
     image: track.album?.images?.[0]?.url || track.image || "",
     album: track.album?.name || track.album || "",
-    source: track.source || null
+    source: track.source || null,
+    addedTimestamp: track.addedTimestamp || null
   };
 }
 
@@ -270,7 +298,7 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   const nowActions = node.querySelector('[data-now-actions]');
   const togglePlayButton = node.querySelector('[data-action="toggle-play"]');
   const insertButton = node.querySelector(".queue-insert");
-  const userRow = node.querySelector(".queue-user-row");
+  const userBadge = node.querySelector(".queue-user-badge");
   const userName = node.querySelector(".queue-user-name");
   const userTime = node.querySelector(".queue-user-time");
 
@@ -285,17 +313,13 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   card.classList.add("no-action");
   if (item.source === "user") {
     card.classList.add("is-user");
-    if (userRow) {
-      userRow.setAttribute("aria-hidden", "false");
-    }
     if (userName) {
       userName.textContent = "Tino";
     }
-    if (userTime) {
-      userTime.textContent = "Time TBD";
+    if (userTime && item.addedTimestamp) {
+      const relativeTime = formatRelativeTime(item.addedTimestamp);
+      userTime.textContent = relativeTime ? ` · ${relativeTime}` : "";
     }
-  } else if (userRow) {
-    userRow.setAttribute("aria-hidden", "true");
   }
 
   if (isPlaying) {
