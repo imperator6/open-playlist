@@ -893,16 +893,71 @@ body.overlay-open {
 }
 
 .queue-insert {
-  width: 100%;
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
   border-radius: 1rem;
   padding: 0.7rem 1rem;
   margin-top: 0.5rem;
-  border: 2px dashed rgba(255, 214, 102, 0.7);
+  position: relative;
+  border: none;
   background: rgba(255, 214, 102, 0.12);
   color: #ffe6a6;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.queue-insert::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 214, 102, 0.7) 0,
+      rgba(255, 214, 102, 0.7) 10px,
+      transparent 10px,
+      transparent 20px
+    ) top left / 100% 2px repeat-x,
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 214, 102, 0.7) 0,
+      rgba(255, 214, 102, 0.7) 10px,
+      transparent 10px,
+      transparent 20px
+    ) top right / 2px 100% repeat-y,
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 214, 102, 0.7) 0,
+      rgba(255, 214, 102, 0.7) 10px,
+      transparent 10px,
+      transparent 20px
+    ) bottom right / 100% 2px repeat-x,
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 214, 102, 0.7) 0,
+      rgba(255, 214, 102, 0.7) 10px,
+      transparent 10px,
+      transparent 20px
+    ) bottom left / 2px 100% repeat-y;
+  animation: queue-insert-dash 1.5s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes queue-insert-dash {
+  to {
+    background-position:
+      top left 20px,
+      top 20px right,
+      bottom right 20px,
+      bottom 20px left;
+  }
 }
 
 .queue-card.is-current .cover {
