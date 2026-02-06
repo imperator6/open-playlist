@@ -656,16 +656,9 @@ async function autoPlayTick() {
     sharedQueue.currentIndex = sharedQueue.tracks.length - 1;
   }
 
-  const response = await fetch(
-    "https://api.spotify.com/v1/me/player/currently-playing",
-    {
-      headers: {
-        Authorization: `Bearer ${sharedSession.token}`
-      }
-    }
-  );
+  const playback = sharedPlaybackCache.playback;
 
-  if (response.status === 204) {
+  if (!playback || !playback.item) {
     logInfo("Auto play tick: no active playback", {
       currentIndex: sharedQueue.currentIndex,
       trackCount: sharedQueue.tracks.length,
@@ -755,14 +748,7 @@ async function autoPlayTick() {
     return;
   }
 
-  if (!response.ok) {
-    const text = await response.text();
-    logWarn("Spotify playback poll failed", { status: response.status, body: text });
-    return;
-  }
-
-  const data = await response.json();
-  const item = data && data.item ? data.item : null;
+  const item = playback.item;
   if (!item) {
     logInfo("Auto play tick skipped: no currently-playing item");
     return;
@@ -786,14 +772,14 @@ async function autoPlayTick() {
     logInfo("Auto play tick: current track observed", {
       index: sharedQueue.currentIndex,
       trackId: item.id || null,
-      isPlaying: Boolean(data.is_playing)
+      isPlaying: Boolean(playback.is_playing)
     });
     if (sharedQueue.lastSeenTrackId !== item.id) {
       sharedQueue.lastSeenTrackId = item.id || null;
       persistQueueStore();
     }
 
-    if (!data.is_playing) {
+    if (!playback.is_playing) {
       const now = Date.now();
       if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
         logInfo("Auto play: debounce active", {
@@ -1566,6 +1552,54 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.autoPlayEnabled = true;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
+
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/player/seek") {
+    if (!(await ensureValidToken(sharedSession))) {
+      return sendJson(res, 401, { error: "Not connected" });
+    }
+
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid seek payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const positionMs = Number(body.position_ms);
+    if (!Number.isInteger(positionMs) || positionMs < 0) {
+      return sendJson(res, 400, { error: "Invalid position_ms" });
+    }
+
+    const seekQuery = `?position_ms=${positionMs}`;
+    const response = await fetch(
+      `https://api.spotify.com/v1/me/player/seek${seekQuery}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${sharedSession.token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      logError("Spotify seek failed", {
+        status: response.status,
+        body: text
+      });
+      return sendJson(res, 502, { error: "Spotify request failed" });
+    }
+
+    if (sharedPlaybackCache.playback) {
+      sharedPlaybackCache.playback.progress_ms = positionMs;
+      sharedPlaybackCache.playback.timestamp = Date.now();
+      sharedPlaybackCache.updatedAt = new Date().toISOString();
+      notifyPlaybackSubscribers();
+    }
 
     return sendJson(res, 200, { ok: true });
   }

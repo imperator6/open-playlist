@@ -27,6 +27,7 @@ let homeProgressState = null;
 let homePlaybackSince = null;
 let homeDevicesSince = null;
 let homeQueueCount = null;
+let homeIsSeeking = false;
 
 function setHomePlaybackStatus(text, isPlaying) {
   if (!homePlaybackStatus) return;
@@ -76,7 +77,7 @@ function updateHomeProgress() {
   }
   const durationMs = homeProgressState.durationMs;
   const clamped = Math.min(Math.max(progressMs, 0), durationMs);
-  if (homeProgressBar) {
+  if (homeProgressBar && !homeIsSeeking) {
     homeProgressBar.max = String(durationMs || 0);
     homeProgressBar.value = String(clamped);
   }
@@ -199,6 +200,7 @@ function applyHomePlaybackPayload(data) {
     if (homeProgressBar) {
       homeProgressBar.value = "0";
       homeProgressBar.max = "100";
+      homeProgressBar.disabled = true;
     }
     if (homeElapsed) homeElapsed.textContent = "0:00";
     if (homeRemaining) homeRemaining.textContent = "-0:00";
@@ -234,6 +236,9 @@ function applyHomePlaybackPayload(data) {
       isPlaying,
       startedAt: Date.now()
     };
+    if (homeProgressBar) {
+      homeProgressBar.disabled = false;
+    }
     updateHomeProgress();
     if (homeProgressTimer) {
       clearInterval(homeProgressTimer);
@@ -535,6 +540,46 @@ if (homeClearQueueBtn) {
       }
     } catch (error) {
       console.error("Clear queue error", error);
+    }
+  });
+}
+
+if (homeProgressBar) {
+  homeProgressBar.addEventListener("input", (event) => {
+    if (!homeProgressState) return;
+    homeIsSeeking = true;
+    const positionMs = Number(event.target.value);
+    if (homeElapsed) {
+      homeElapsed.textContent = formatTimeFromMs(positionMs);
+    }
+    if (homeRemaining) {
+      homeRemaining.textContent = `-${formatTimeFromMs(homeProgressState.durationMs - positionMs)}`;
+    }
+  });
+
+  homeProgressBar.addEventListener("change", async (event) => {
+    if (!homeProgressState) return;
+    const positionMs = Number(event.target.value);
+    homeIsSeeking = false;
+
+    try {
+      const response = await fetch("/api/player/seek", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position_ms: positionMs })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Seek failed", response.status, text);
+        return;
+      }
+
+      homeProgressState.progressMs = positionMs;
+      homeProgressState.startedAt = Date.now();
+      updateHomeProgress();
+    } catch (error) {
+      console.error("Seek error", error);
     }
   });
 }
