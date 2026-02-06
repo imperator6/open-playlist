@@ -145,9 +145,13 @@ function setHomeQueueStatus(count) {
   const text = homeQueueStatus.querySelector(".queue-count-text");
   if (!text) return;
   homeQueueCount = typeof count === "number" ? count : null;
+
+  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+  const isAdmin = currentUser && currentUser.role === "admin";
+
   if (!count) {
     text.textContent = "Queue is empty.";
-    if (homeLoadQueueBtn) {
+    if (homeLoadQueueBtn && isAdmin) {
       homeLoadQueueBtn.style.display = "inline-flex";
     }
     if (homeClearQueueBtn) {
@@ -165,7 +169,7 @@ function setHomeQueueStatus(count) {
   if (homeLoadQueueBtn) {
     homeLoadQueueBtn.style.display = "none";
   }
-  if (homeClearQueueBtn) {
+  if (homeClearQueueBtn && isAdmin) {
     homeClearQueueBtn.style.display = "inline-flex";
   }
   if (homeAutoplayToggle) {
@@ -178,7 +182,15 @@ function setHomeQueueStatus(count) {
 
 function setHomeStartPlaybackVisibility(show) {
   if (!homeStartPlaybackBtn) return;
-  homeStartPlaybackBtn.style.display = show ? "inline-flex" : "none";
+
+  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+  const isAdmin = currentUser && currentUser.role === "admin";
+
+  if (isAdmin) {
+    homeStartPlaybackBtn.style.display = show ? "inline-flex" : "none";
+  } else {
+    homeStartPlaybackBtn.style.display = "none";
+  }
 }
 
 function applyHomePlaybackPayload(data) {
@@ -399,9 +411,14 @@ async function updateHomeAutoplay(enabled) {
 }
 
 
-fetchStatus();
-startHomePlaybackLongPoll();
-startHomeDevicesLongPoll();
+async function initializeApp() {
+  await window.authAPI.fetchUserStatus();
+  fetchStatus();
+  startHomePlaybackLongPoll();
+  startHomeDevicesLongPoll();
+}
+
+initializeApp();
 
 if (homeAutoplayToggle) {
   homeAutoplayToggle.disabled = true;

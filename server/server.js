@@ -4,11 +4,14 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const nodeFetch = require("node-fetch");
+const { hasPermission, getPermissionsForRole } = require("./permissions");
+const auth = require("./auth");
 
 const PORT = process.env.PORT || 5173;
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const HOST_PIN = process.env.HOST_PIN || "";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const AUTO_REFRESH =
   String(process.env.AUTO_REFRESH || "1").toLowerCase() === "1";
 const SESSION_STORE = process.env.SESSION_STORE || path.join(__dirname, "..", "storage", "session_store.json");
@@ -262,6 +265,10 @@ if (!HOST_PIN) {
   logWarn("HOST_PIN is not set; host actions are unsecured");
 }
 
+if (!ADMIN_PASSWORD) {
+  logWarn("ADMIN_PASSWORD is not set; admin authentication is disabled");
+}
+
 readSessionStore();
 readQueueStore();
 
@@ -273,6 +280,34 @@ function sendJson(res, status, data) {
 function verifyHostPin(pin) {
   if (!HOST_PIN) return true;
   return pin === HOST_PIN;
+}
+
+function verifyAdminPassword(password) {
+  if (!ADMIN_PASSWORD) return false;
+  return password === ADMIN_PASSWORD;
+}
+
+function getUserSession(req) {
+  return auth.getOrCreateGuestSession(req);
+}
+
+function checkPermission(req, action) {
+  const session = getUserSession(req);
+  return hasPermission(action, session.role);
+}
+
+function requirePermission(req, res, action) {
+  if (!checkPermission(req, action)) {
+    const session = getUserSession(req);
+    logWarn("Permission denied", {
+      action,
+      role: session.role,
+      sessionId: session.sessionId
+    });
+    sendJson(res, 403, { error: "Insufficient permissions" });
+    return false;
+  }
+  return true;
 }
 
 function readStaticFile(filePath, res) {
@@ -877,6 +912,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/css/styles.css") {
     return readStaticFile(path.join(__dirname, "..", "public", "css", "styles.css"), res);
   }
+  if (pathname === "/js/auth.js") {
+    return readStaticFile(path.join(__dirname, "..", "public", "js", "auth.js"), res);
+  }
   if (pathname === "/js/app.js") {
     return readStaticFile(path.join(__dirname, "..", "public", "js", "app.js"), res);
   }
@@ -902,6 +940,115 @@ const server = http.createServer(async (req, res) => {
       hasRefreshToken: Boolean(sharedSession.refreshToken),
       hasRedirectUri: Boolean(sharedSession.redirectUri),
       hostPinRequired: Boolean(HOST_PIN)
+    });
+  }
+
+  if (pathname === "/api/auth/status") {
+    const session = getUserSession(req);
+    const permissions = getPermissionsForRole(session.role);
+    res.setHeader("Set-Cookie", auth.createSessionCookie(session));
+    return sendJson(res, 200, {
+      role: session.role,
+      name: session.name,
+      sessionId: session.sessionId,
+      permissions
+    });
+  }
+
+  if (pathname === "/api/auth/admin") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid admin login payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const password = body.password || "";
+    if (!verifyAdminPassword(password)) {
+      logWarn("Admin login failed", { hasPassword: Boolean(password) });
+      return sendJson(res, 401, { error: "Invalid password" });
+    }
+
+    const session = getUserSession(req);
+    const adminSession = auth.updateSession(session.sessionId, {
+      role: "admin",
+      name: session.name || "Admin"
+    });
+
+    if (!adminSession) {
+      return sendJson(res, 500, { error: "Failed to create admin session" });
+    }
+
+    res.setHeader("Set-Cookie", auth.createSessionCookie(adminSession));
+    logInfo("Admin login successful", { sessionId: adminSession.sessionId });
+    return sendJson(res, 200, {
+      role: adminSession.role,
+      name: adminSession.name,
+      sessionId: adminSession.sessionId
+    });
+  }
+
+  if (pathname === "/api/auth/guest/name") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid guest name payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const name = (body.name || "").trim();
+    if (!name) {
+      return sendJson(res, 400, { error: "Name is required" });
+    }
+
+    if (name.length > 50) {
+      return sendJson(res, 400, { error: "Name is too long (max 50 characters)" });
+    }
+
+    const session = getUserSession(req);
+    const updatedSession = auth.updateSession(session.sessionId, { name });
+
+    if (!updatedSession) {
+      return sendJson(res, 500, { error: "Failed to update session" });
+    }
+
+    res.setHeader("Set-Cookie", auth.createSessionCookie(updatedSession));
+    logInfo("Guest name updated", {
+      sessionId: updatedSession.sessionId,
+      name: updatedSession.name
+    });
+    return sendJson(res, 200, {
+      role: updatedSession.role,
+      name: updatedSession.name,
+      sessionId: updatedSession.sessionId
+    });
+  }
+
+  if (pathname === "/api/auth/logout") {
+    const session = getUserSession(req);
+
+    if (session.role === "admin") {
+      const guestSession = auth.updateSession(session.sessionId, {
+        role: "guest"
+      });
+
+      if (guestSession) {
+        res.setHeader("Set-Cookie", auth.createSessionCookie(guestSession));
+        logInfo("Admin logged out", { sessionId: guestSession.sessionId });
+        return sendJson(res, 200, {
+          role: guestSession.role,
+          name: guestSession.name,
+          sessionId: guestSession.sessionId
+        });
+      }
+    }
+
+    return sendJson(res, 200, {
+      role: session.role,
+      name: session.name,
+      sessionId: session.sessionId
     });
   }
 
@@ -1303,6 +1450,10 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { error: "Not connected" });
     }
 
+    if (!checkPermission(req, "track:play")) {
+      return sendJson(res, 403, { error: "Permission denied" });
+    }
+
     let body = {};
     try {
       body = await readJsonBody(req);
@@ -1361,6 +1512,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/player/pause") {
+    if (!requirePermission(req, res, "playback:pause")) {
+      return;
+    }
+
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
     }
@@ -1473,6 +1628,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/player/transfer") {
+    if (!requirePermission(req, res, "device:transfer")) {
+      return;
+    }
+
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
     }
@@ -1529,6 +1688,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/player/resume") {
+    if (!requirePermission(req, res, "playback:resume")) {
+      return;
+    }
+
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
     }
@@ -1564,6 +1727,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/player/seek") {
+    if (!requirePermission(req, res, "playback:seek")) {
+      return;
+    }
+
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
     }
@@ -1626,6 +1793,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/autoplay") {
+    if (!requirePermission(req, res, "queue:autoplay")) {
+      return;
+    }
+
     let body = {};
     try {
       body = await readJsonBody(req);
@@ -1718,6 +1889,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/select") {
+    if (!requirePermission(req, res, "queue:playlist:select")) {
+      return;
+    }
+
     let body = {};
     try {
       body = await readJsonBody(req);
@@ -1751,6 +1926,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/load") {
+    if (!requirePermission(req, res, "queue:playlist:load")) {
+      return;
+    }
+
     if (!(await ensureValidToken(sharedSession))) {
       return sendJson(res, 401, { error: "Not connected" });
     }
@@ -1825,6 +2004,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/add") {
+    if (!requirePermission(req, res, "queue:add")) {
+      return;
+    }
+
+    const session = getUserSession(req);
+
+    if (!session.name || session.name.trim() === "") {
+      return sendJson(res, 400, {
+        error: "Name is required to add tracks. Please set your name first."
+      });
+    }
+
     let body = {};
     try {
       body = await readJsonBody(req);
@@ -1851,7 +2042,12 @@ const server = http.createServer(async (req, res) => {
       image: track.image || "",
       album: track.album || "",
       source: "user",
-      addedTimestamp: new Date().toISOString()
+      addedTimestamp: new Date().toISOString(),
+      addedBy: {
+        sessionId: session.sessionId,
+        name: session.name,
+        role: session.role
+      }
     };
 
     if (position === null || position >= sharedQueue.tracks.length) {
@@ -1869,6 +2065,12 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
 
+    logInfo("Track added to queue", {
+      trackId: normalized.id,
+      addedBy: session.name,
+      role: session.role
+    });
+
     return sendJson(res, 200, {
       ok: true,
       tracks: sharedQueue.tracks
@@ -1876,6 +2078,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/clear") {
+    if (!requirePermission(req, res, "queue:clear")) {
+      return;
+    }
+
     sharedQueue.tracks = [];
     sharedQueue.updatedAt = new Date().toISOString();
     sharedQueue.currentIndex = 0;
@@ -1884,6 +2090,12 @@ const server = http.createServer(async (req, res) => {
     persistQueueStore();
     notifyPlaybackSubscribers();
 
+    const session = getUserSession(req);
+    logInfo("Queue cleared", {
+      clearedBy: session.name,
+      role: session.role
+    });
+
     return sendJson(res, 200, {
       ok: true,
       tracks: sharedQueue.tracks
@@ -1891,6 +2103,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/remove") {
+    const session = getUserSession(req);
+
     let body = {};
     try {
       body = await readJsonBody(req);
@@ -1908,6 +2122,22 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: "Invalid index" });
     }
 
+    const track = sharedQueue.tracks[index];
+    const isOwner = track.addedBy && track.addedBy.sessionId === session.sessionId;
+    const isAdmin = session.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      logWarn("Remove denied: not owner", {
+        trackIndex: index,
+        trackAddedBy: track.addedBy && track.addedBy.name,
+        requestedBy: session.name,
+        role: session.role
+      });
+      return sendJson(res, 403, {
+        error: "You can only remove tracks you added"
+      });
+    }
+
     const removed = sharedQueue.tracks.splice(index, 1)[0];
     if (Number.isInteger(sharedQueue.currentIndex)) {
       if (index < sharedQueue.currentIndex) {
@@ -1922,6 +2152,13 @@ const server = http.createServer(async (req, res) => {
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
 
+    logInfo("Track removed from queue", {
+      trackId: removed.id,
+      removedBy: session.name,
+      role: session.role,
+      wasOwner: isOwner
+    });
+
     return sendJson(res, 200, {
       ok: true,
       removed: removed ? removed.id : null,
@@ -1930,6 +2167,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === "/api/queue/playlist/reorder") {
+    if (!requirePermission(req, res, "queue:reorder")) {
+      return;
+    }
+
     let body = {};
     try {
       body = await readJsonBody(req);

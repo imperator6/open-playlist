@@ -310,8 +310,12 @@ if (loadPlaylistBtn) {
   });
 }
 
+async function initializePlaylist() {
+  await window.authAPI.fetchUserStatus();
+  fetchPlaylists();
+}
 
-fetchPlaylists();
+initializePlaylist();
 
 if (playlistSearchForm && playlistSearchInput) {
   setSearchStatus("Search for a playlist to see results.");

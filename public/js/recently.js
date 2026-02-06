@@ -169,4 +169,9 @@ if (refreshBtn) {
   });
 }
 
-loadRecentlyPlayed();
+async function initializeRecently() {
+  await window.authAPI.fetchUserStatus();
+  loadRecentlyPlayed();
+}
+
+initializeRecently();

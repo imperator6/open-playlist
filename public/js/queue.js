@@ -281,7 +281,8 @@ function parseTrack(track) {
     image: track.album?.images?.[0]?.url || track.image || "",
     album: track.album?.name || track.album || "",
     source: track.source || null,
-    addedTimestamp: track.addedTimestamp || null
+    addedTimestamp: track.addedTimestamp || null,
+    addedBy: track.addedBy || null
   };
 }
 
@@ -313,8 +314,8 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   card.classList.add("no-action");
   if (item.source === "user") {
     card.classList.add("is-user");
-    if (userName) {
-      userName.textContent = "Tino";
+    if (userName && item.addedBy) {
+      userName.textContent = item.addedBy.name || "Unknown";
     }
     if (userTime && item.addedTimestamp) {
       const relativeTime = formatRelativeTime(item.addedTimestamp);
@@ -364,23 +365,39 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   }
 
   if (removeButton) {
-    const icon = removeButton.querySelector(".icon");
-    if (icon) {
-      icon.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-        '<path d="M7 7l10 10M17 7l-10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>' +
-        "</svg>";
+    const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+    const isOwner = item.addedBy && currentUser && item.addedBy.sessionId === currentUser.sessionId;
+    const isAdmin = currentUser && currentUser.role === "admin";
+    const canRemove = isOwner || isAdmin;
+
+    if (!canRemove) {
+      removeButton.remove();
+    } else {
+      const icon = removeButton.querySelector(".icon");
+      if (icon) {
+        icon.innerHTML =
+          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M7 7l10 10M17 7l-10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>' +
+          "</svg>";
+      }
+      removeButton.addEventListener("click", () => {
+        removeTrackAt(index);
+      });
     }
-    removeButton.addEventListener("click", () => {
-      removeTrackAt(index);
-    });
   }
 
   if (playButton) {
-    playButton.addEventListener("click", () => {
-      if (!item.uri) return;
-      playSingleTrack(item.uri, item.id);
-    });
+    const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+    const isAdmin = currentUser && currentUser.role === "admin";
+
+    if (!isAdmin) {
+      playButton.remove();
+    } else {
+      playButton.addEventListener("click", () => {
+        if (!item.uri) return;
+        playSingleTrack(item.uri, item.id);
+      });
+    }
   }
 
   if (insertButton) {
@@ -804,6 +821,15 @@ async function addTrackToPlaylist(track, position) {
     return;
   }
   if (!track || !track.uri) return;
+
+  if (window.authAPI) {
+    const userName = await window.authAPI.ensureUserHasName();
+    if (!userName) {
+      setQueueStatus("Name is required to add tracks.");
+      return;
+    }
+  }
+
   const effectivePosition =
     typeof position === "number" && position >= 0
       ? Math.min(position, playlistTracks.length)
@@ -820,9 +846,19 @@ async function addTrackToPlaylist(track, position) {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      console.error("Add track failed", response.status, text);
-      setQueueStatus("Unable to add track.");
+      const data = await response.json();
+      const errorMessage = data.error || "Unable to add track.";
+      console.error("Add track failed", response.status, errorMessage);
+      setQueueStatus(errorMessage);
+
+      if (response.status === 400 && errorMessage.includes("name")) {
+        if (window.authAPI) {
+          const userName = await window.authAPI.openNamePrompt();
+          if (userName) {
+            return addTrackToPlaylist(track, position);
+          }
+        }
+      }
       return;
     }
 
@@ -1056,14 +1092,21 @@ document.addEventListener("keydown", (event) => {
   closeSearchOverlay();
 });
 
-startPlaybackLongPoll();
-fetchPlaylists();
-startDevicesLongPoll();
-setInterval(() => {
-  // Device updates are now long-polled.
-}, 15000);
-setInterval(async () => {
-  if (!isDragging && !isReordering) {
-    await fetchPlaylistTracks();
+async function initializeQueue() {
+  if (window.authAPI) {
+    await window.authAPI.fetchUserStatus();
   }
-}, REFRESH_INTERVAL_MS);
+  startPlaybackLongPoll();
+  fetchPlaylists();
+  startDevicesLongPoll();
+  setInterval(() => {
+    // Device updates are now long-polled.
+  }, 15000);
+  setInterval(async () => {
+    if (!isDragging && !isReordering) {
+      await fetchPlaylistTracks();
+    }
+  }, REFRESH_INTERVAL_MS);
+}
+
+initializeQueue();

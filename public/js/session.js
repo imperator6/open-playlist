@@ -17,6 +17,14 @@ const hostPinInput = document.getElementById("host-pin");
 
 let hostPinRequired = true;
 
+async function checkAdminAccess() {
+  await window.authAPI.fetchUserStatus();
+  const user = window.authAPI.getCurrentUser();
+  if (user.role !== "admin") {
+    window.location.href = "index.html";
+  }
+}
+
 function setError(message) {
   errorText.textContent = message || "";
 }
@@ -202,6 +210,7 @@ clearBtn.addEventListener("click", () => {
   disconnectHost();
 });
 
+checkAdminAccess();
 readErrorFromUrl();
 fetchStatus();
 setInterval(fetchStatus, 15000);
