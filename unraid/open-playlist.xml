@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>open-playlist</Name>
+  <Repository>ghcr.io/imperator6/open-playlist:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/imperator6/open-playlist</Support>
+  <Project>https://github.com/imperator6/open-playlist</Project>
+  <Overview>Open Playlist - Spotify Waiting List Manager&#xD;
+&#xD;
+A lightweight Spotify host application that manages a waiting-list playlist system with search, queue control, and recently played track management.&#xD;
+&#xD;
+Features:&#xD;
+- Waiting list playlist management with reorder/add/remove&#xD;
+- Full playback controls (play/pause, device selection)&#xD;
+- Real-time queue updates via long-polling&#xD;
+- Search tracks and add to queue&#xD;
+- Recently played track history&#xD;
+- Mobile-first responsive design&#xD;
+- Automatic playlist advancement&#xD;
+&#xD;
+Before using:&#xD;
+1. Create Spotify Developer App at https://developer.spotify.com/dashboard&#xD;
+2. Get Client ID and Client Secret&#xD;
+3. Add redirect URI: http://YOUR_UNRAID_IP:5173/callback&#xD;
+4. Configure environment variables below</Overview>
+  <Category>MediaApp:Music</Category>
+  <WebUI>http://[IP]:[PORT:5173]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/imperator6/open-playlist/main/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/imperator6/open-playlist/main/icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled></DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Spotify Developer Account (free) - https://developer.spotify.com</Requires>
+  <Config Name="WebUI Port" Target="5173" Default="5173" Mode="tcp" Description="Port for web interface" Type="Port" Display="always" Required="true" Mask="false">5173</Config>
+  <Config Name="Storage" Target="/app/storage" Default="/mnt/user/appdata/open-playlist/storage" Mode="rw" Description="Persistent storage for session and queue data" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/open-playlist/storage</Config>
+  <Config Name="Spotify Client ID" Target="SPOTIFY_CLIENT_ID" Default="" Mode="" Description="Your Spotify Application Client ID from https://developer.spotify.com/dashboard" Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Spotify Client Secret" Target="SPOTIFY_CLIENT_SECRET" Default="" Mode="" Description="Your Spotify Application Client Secret (keep this secure!)" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="Spotify Redirect URI" Target="SPOTIFY_REDIRECT_URI" Default="http://YOUR_UNRAID_IP:5173/callback" Mode="" Description="Redirect URI - MUST match what you set in Spotify Developer Dashboard. Replace YOUR_UNRAID_IP with your server's IP address." Type="Variable" Display="always" Required="true" Mask="false">http://YOUR_UNRAID_IP:5173/callback</Config>
+  <Config Name="Port" Target="PORT" Default="5173" Mode="" Description="Internal port (should match WebUI port above)" Type="Variable" Display="advanced" Required="false" Mask="false">5173</Config>
+  <Config Name="Host PIN" Target="HOST_PIN" Default="0000" Mode="" Description="PIN code for host-only actions (connect/disconnect). Change from default for security!" Type="Variable" Display="always" Required="false" Mask="true">0000</Config>
+  <Config Name="Auto Refresh" Target="AUTO_REFRESH" Default="1" Mode="" Description="Enable automatic token refresh (1=enabled, 0=disabled)" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="Log Level" Target="LOG_LEVEL" Default="INFO" Mode="" Description="Server log verbosity: DEBUG, INFO, WARN, ERROR" Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
+  <Config Name="Session Store Path" Target="SESSION_STORE" Default="/app/storage/session_store.json" Mode="" Description="Path to session storage file (OAuth tokens)" Type="Variable" Display="advanced" Required="false" Mask="false">/app/storage/session_store.json</Config>
+  <Config Name="Queue Store Path" Target="QUEUE_STORE" Default="/app/storage/queue_store.json" Mode="" Description="Path to queue storage file (playlist state)" Type="Variable" Display="advanced" Required="false" Mask="false">/app/storage/queue_store.json</Config>
+</Container>
