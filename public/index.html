@@ -16,9 +16,19 @@
           <span id="user-role" class="user-role"></span>
           <span id="user-name" class="user-name"></span>
         </div>
-        <button class="menu-burger" id="menu-burger" type="button" aria-label="Open menu" aria-expanded="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
-        </button>
+        <div class="menu-right">
+          <label class="toggle menu-toggle" for="home-autoplay-toggle" data-role-required="admin">
+            <span class="toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6H4a8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8z"/><polygon points="10,10 10,16 15,13"/></svg></span>
+            <span class="sr-only">Auto-play</span>
+            <input id="home-autoplay-toggle" type="checkbox" />
+            <span class="toggle-track" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+          </label>
+          <button class="menu-burger" id="menu-burger" type="button" aria-label="Open menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+          </button>
+        </div>
       </nav>
       <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
       <div class="menu-drawer" id="menu-drawer" aria-hidden="true">
@@ -77,13 +87,6 @@
           <div class="now-playing-header">
             <h2>Playback</h2>
             <div class="now-playing-controls">
-              <label class="toggle" for="home-autoplay-toggle" data-role-required="admin">
-                <span class="toggle-label">Auto-play</span>
-                <input id="home-autoplay-toggle" type="checkbox" />
-                <span class="toggle-track" aria-hidden="true">
-                  <span class="toggle-thumb"></span>
-                </span>
-              </label>
               <label class="device-picker" for="home-device-select" data-role-required="admin">
                 <span class="toggle-label">Device</span>
                 <select id="home-device-select"></select>

@@ -70,6 +70,46 @@ body {
   fill: currentColor;
 }
 
+.menu-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.menu-toggle {
+  font-size: 0.75rem;
+  gap: 0.3rem;
+}
+
+.menu-toggle .toggle-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-flex;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.menu-toggle .toggle-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.menu-toggle .toggle-track {
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+}
+
+.menu-toggle .toggle-thumb {
+  width: 16px;
+  height: 16px;
+}
+
+.menu-toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(14px);
+}
+
 /* Drawer backdrop */
 .menu-backdrop {
   position: fixed;
