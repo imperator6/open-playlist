@@ -28,6 +28,7 @@ const queueConfirmAccept = document.getElementById("queue-confirm-accept");
 const REFRESH_INTERVAL_MS = 8000;
 const SESSION_PAGE = "session.html";
 const PLAYLIST_KEY = "waiting_list_playlist";
+const SEARCH_RESULTS_PAGE_SIZE = 12;
 
 let currentPlaylistId = null;
 let playlistTracks = [];
@@ -731,7 +732,7 @@ function renderSearchResults(tracks) {
     showMoreBtn.type = "button";
     showMoreBtn.textContent = "Show More";
     showMoreBtn.addEventListener("click", () => {
-      const nextOffset = currentSearchOffset + 12;
+      const nextOffset = currentSearchOffset + SEARCH_RESULTS_PAGE_SIZE;
       searchTracks(currentSearchQuery, nextOffset);
     });
     searchResults.appendChild(showMoreBtn);

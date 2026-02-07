@@ -26,6 +26,7 @@ const LOG_LEVELS = {
   ERROR: 40
 };
 const ACTIVE_LOG_LEVEL = LOG_LEVELS[LOG_LEVEL_NAME] || LOG_LEVELS.INFO;
+const SEARCH_RESULTS_PAGE_SIZE = 12;
 
 const sharedSession = {
   token: null,
@@ -1445,7 +1446,7 @@ const server = http.createServer(async (req, res) => {
     const params = new URLSearchParams({
       q: query,
       type: "track",
-      limit: "12",
+      limit: String(SEARCH_RESULTS_PAGE_SIZE),
       offset: offset
     });
 
