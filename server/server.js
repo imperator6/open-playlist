@@ -1441,10 +1441,12 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: "Missing query" });
     }
 
+    const offset = url.searchParams.get("offset") || "0";
     const params = new URLSearchParams({
       q: query,
       type: "track",
-      limit: "12"
+      limit: "12",
+      offset: offset
     });
 
     const response = await fetch(

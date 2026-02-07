@@ -1262,6 +1262,11 @@ body.menu-open {
   margin-bottom: 1rem;
 }
 
+.queue-results .show-more-btn {
+  justify-self: center;
+  margin-top: 0.5rem;
+}
+
 .queue-empty {
   display: grid;
   gap: 0.5rem;

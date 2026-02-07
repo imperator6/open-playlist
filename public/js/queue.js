@@ -47,6 +47,10 @@ let pendingInsertIndex = null;
 let pendingInsertLabel = "";
 let queueConfirmResolver = null;
 let queueConfirmLastFocus = null;
+let currentSearchQuery = "";
+let currentSearchOffset = 0;
+let currentSearchTracks = [];
+let hasMoreSearchResults = false;
 
 function resolveQueueConfirm(result) {
   if (queueConfirmResolver) {
@@ -719,6 +723,19 @@ function renderSearchResults(tracks) {
     const card = createSearchCard(track);
     searchResults.appendChild(card);
   });
+
+  // Add "Show More" button if there are more results
+  if (hasMoreSearchResults) {
+    const showMoreBtn = document.createElement("button");
+    showMoreBtn.className = "ghost show-more-btn";
+    showMoreBtn.type = "button";
+    showMoreBtn.textContent = "Show More";
+    showMoreBtn.addEventListener("click", () => {
+      const nextOffset = currentSearchOffset + 12;
+      searchTracks(currentSearchQuery, nextOffset);
+    });
+    searchResults.appendChild(showMoreBtn);
+  }
 }
 
 function clearSearchResultsView() {
@@ -727,6 +744,10 @@ function clearSearchResultsView() {
 function clearSearchResults() {
   searchResults.innerHTML = "";
   searchInput.value = "";
+  currentSearchQuery = "";
+  currentSearchOffset = 0;
+  currentSearchTracks = [];
+  hasMoreSearchResults = false;
 }
 
 async function removeTrackAt(index) {
@@ -888,12 +909,12 @@ async function fetchPlaylistTracks() {
   }
 }
 
-async function searchTracks(query) {
+async function searchTracks(query, offset = 0) {
   if (!query.trim()) return;
   try {
     setQueueStatus("Searching tracks...", true);
     const response = await fetch(
-      `/api/track-search?q=${encodeURIComponent(query)}`
+      `/api/track-search?q=${encodeURIComponent(query)}&offset=${offset}`
     );
     if (!response.ok) {
       if (response.status === 401) {
@@ -917,7 +938,24 @@ async function searchTracks(query) {
       duration_ms: track.duration_ms || null
     }));
 
-    renderSearchResults(tracks);
+    // Track pagination state
+    currentSearchQuery = query;
+    currentSearchOffset = offset;
+    
+    // Determine if there are more results
+    const total = data.tracks?.total || 0;
+    hasMoreSearchResults = (offset + tracks.length) < total;
+
+    if (offset === 0) {
+      // New search - replace results
+      currentSearchTracks = tracks;
+      renderSearchResults(currentSearchTracks);
+    } else {
+      // Load more - append results
+      currentSearchTracks = [...currentSearchTracks, ...tracks];
+      renderSearchResults(currentSearchTracks);
+    }
+
     setQueueStatus("Select a track to place.");
   } catch (error) {
     console.error("Track search error", error);
