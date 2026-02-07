@@ -357,6 +357,7 @@ function parseTrack(track) {
     image: track.album?.images?.[0]?.url || track.image || "",
     album: track.album?.name || track.album || "",
     source: track.source || null,
+    duration_ms: track.duration_ms || null,
     addedTimestamp: track.addedTimestamp || null,
     addedBy: track.addedBy || null
   };
@@ -637,6 +638,17 @@ function renderPlayback(data) {
   }
 }
 
+function formatTimelineBadge(ms) {
+  if (typeof ms !== "number" || ms < 0) return null;
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function renderPlaylist(tracks) {
   queueList.innerHTML = "";
   if (!tracks.length) {
@@ -644,12 +656,16 @@ function renderPlaylist(tracks) {
     return;
   }
 
+  let cumulativeMs = 0;
+  let cumulativeValid = false;
+
   tracks.forEach((item, index) => {
     const source = item.track ? item.track : item;
     const track = parseTrack(source);
     if (!track) return;
     const isNowPlaying = currentPlaybackId && track.id === currentPlaybackId;
     const label = isNowPlaying ? "Now playing" : `Next ${index + 1}`;
+
     const node = createQueueCard(
       track,
       label,
@@ -663,6 +679,31 @@ function renderPlaylist(tracks) {
         card.classList.add("is-current");
       }
     }
+
+    if (index === 0) {
+      if (remainingState && typeof remainingState.remainingMs === "number") {
+        let remaining = remainingState.remainingMs;
+        if (remainingState.isPlaying) {
+          remaining = Math.max(0, remaining - (Date.now() - remainingState.startedAt));
+        }
+        cumulativeMs = remaining;
+        cumulativeValid = true;
+      } else if (typeof track.duration_ms === "number") {
+        cumulativeMs = track.duration_ms;
+        cumulativeValid = true;
+      }
+    } else {
+      if (typeof track.duration_ms === "number" && cumulativeValid) {
+        cumulativeMs += track.duration_ms;
+      }
+    }
+
+    const timelineTime = node.querySelector(".queue-timeline-time");
+    if (timelineTime) {
+      const timeText = cumulativeValid ? formatTimelineBadge(cumulativeMs) : null;
+      timelineTime.textContent = timeText || "";
+    }
+
     queueList.appendChild(node);
   });
 }
@@ -872,7 +913,8 @@ async function searchTracks(query) {
       title: track.name,
       artist: formatArtists(track.artists),
       image: track.album?.images?.[0]?.url || "",
-      album: track.album?.name || ""
+      album: track.album?.name || "",
+      duration_ms: track.duration_ms || null
     }));
 
     renderSearchResults(tracks);
@@ -1110,15 +1152,7 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("[data-open-search]");
   if (!target) return;
   event.preventDefault();
-  const trackTitle = target.dataset.title || "selected track";
-  openQueueConfirmDialog({
-    title: "Add a song here?",
-    message: `Open search to insert a song after "${trackTitle}"?`,
-    confirmLabel: "Continue"
-  }).then((confirmed) => {
-    if (!confirmed) return;
-    openSearchOverlay(target);
-  });
+  openSearchOverlay(target);
 });
 
 if (queueOverlayClose) {

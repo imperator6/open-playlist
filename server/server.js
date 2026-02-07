@@ -41,7 +41,7 @@ const sharedQueue = {
   tracks: [],
   updatedAt: null,
   currentIndex: 0,
-  autoPlayEnabled: true,
+  autoPlayEnabled: false,
   lastSeenTrackId: null,
   lastAdvanceAt: null,
   lastError: null,
@@ -199,14 +199,16 @@ function readQueueStore() {
       Number.isInteger(data.currentIndex) && data.currentIndex >= 0
         ? data.currentIndex
         : 0;
-    sharedQueue.autoPlayEnabled =
-      typeof data.autoPlayEnabled === "boolean" ? data.autoPlayEnabled : true;
+    const hadAutoPlayEnabled = typeof data.autoPlayEnabled === "boolean"
+      ? data.autoPlayEnabled
+      : false;
+    sharedQueue.autoPlayEnabled = false;
     sharedQueue.lastSeenTrackId = data.lastSeenTrackId || null;
     sharedQueue.lastAdvanceAt = data.lastAdvanceAt || null;
     sharedQueue.lastError = data.lastError || null;
     sharedQueue.activeDeviceId = data.activeDeviceId || null;
     sharedQueue.activeDeviceName = data.activeDeviceName || null;
-    if (didNormalize) {
+    if (didNormalize || hadAutoPlayEnabled) {
       persistQueueStore();
     }
 
@@ -1985,6 +1987,7 @@ const server = http.createServer(async (req, res) => {
             ? track.album.images[0].url
             : "",
         album: track.album ? track.album.name : "",
+        duration_ms: track.duration_ms || null,
         source: "playlist",
         addedTimestamp: addedAt
       }));
@@ -2044,6 +2047,7 @@ const server = http.createServer(async (req, res) => {
       artist: track.artist || "Unknown artist",
       image: track.image || "",
       album: track.album || "",
+      duration_ms: track.duration_ms || null,
       source: "user",
       addedTimestamp: new Date().toISOString(),
       addedBy: {
