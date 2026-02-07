@@ -4,8 +4,6 @@ const recentHint = document.getElementById("recent-hint");
 const refreshBtn = document.getElementById("recent-refresh-btn");
 const recentTemplate = document.getElementById("recent-card");
 
-const SESSION_PAGE = "session.html";
-
 function setStatus(message, showSaving) {
   if (showSaving) {
     recentStatus.innerHTML = '<span class="saving-badge">Loading...</span>';
@@ -135,7 +133,8 @@ async function loadRecentlyPlayed() {
     const response = await fetch("/api/recently-played");
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setStatus("No active session.");
+        setHint("Connect Spotify on the Session page and try again.");
         return;
       }
       const text = await response.text();

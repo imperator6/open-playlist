@@ -26,7 +26,6 @@ const queueConfirmCancel = document.getElementById("queue-confirm-cancel");
 const queueConfirmAccept = document.getElementById("queue-confirm-accept");
 
 const REFRESH_INTERVAL_MS = 8000;
-const SESSION_PAGE = "session.html";
 const PLAYLIST_KEY = "waiting_list_playlist";
 const SEARCH_RESULTS_PAGE_SIZE = 12;
 
@@ -220,7 +219,9 @@ async function startDevicesLongPoll() {
     const response = await fetch(`/api/player/devices/stream${query}`);
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
+        setDeviceStatus("No active session. Connect Spotify on the Session page.");
+        setTimeout(startDevicesLongPoll, 2000);
         return;
       }
       const text = await response.text();
@@ -231,6 +232,7 @@ async function startDevicesLongPoll() {
     }
 
     const data = await response.json();
+    setQueueError("");
     devicesSince = data.updatedAt || new Date().toISOString();
     const devices = Array.isArray(data.devices) ? data.devices : [];
     const active = devices.find((device) => device.is_active);
@@ -426,8 +428,8 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   if (removeButton) {
     const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
     const isOwner = item.addedBy && currentUser && item.addedBy.sessionId === currentUser.sessionId;
-    const isAdmin = currentUser && currentUser.role === "admin";
-    const canRemove = isOwner || isAdmin;
+    const canRemoveAny = window.authAPI && window.authAPI.hasPermission("queue:remove:any");
+    const canRemove = isOwner || canRemoveAny;
 
     if (!canRemove) {
       removeButton.remove();
@@ -454,10 +456,9 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   }
 
   if (playButton) {
-    const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-    const isAdmin = currentUser && currentUser.role === "admin";
+    const canPlay = window.authAPI && window.authAPI.hasPermission("track:play");
 
-    if (!isAdmin) {
+    if (!canPlay) {
       playButton.remove();
     } else {
       playButton.addEventListener("click", () => {
@@ -784,7 +785,16 @@ async function startPlaybackLongPoll() {
     const response = await fetch(`/api/queue/stream${query}`);
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
+        if (playbackStatus) {
+          playbackStatus.textContent = "Disconnected";
+          playbackStatus.style.color = "#ff7a6c";
+        }
+        if (playbackHint) {
+          playbackHint.textContent =
+            "No active session. Connect Spotify on the Session page.";
+        }
+        setTimeout(startPlaybackLongPoll, 2000);
         return;
       }
       const text = await response.text();
@@ -802,6 +812,7 @@ async function startPlaybackLongPoll() {
     }
 
     const data = await response.json();
+    setQueueError("");
     playbackSince = data.updatedAt || new Date().toISOString();
     renderPlayback(data);
     startPlaybackLongPoll();
@@ -821,7 +832,7 @@ async function fetchPlaylists() {
     const response = await fetch("/api/playlists");
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
         return;
       }
       const text = await response.text();
@@ -919,7 +930,7 @@ async function searchTracks(query, offset = 0) {
     );
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
         return;
       }
       const text = await response.text();
@@ -1035,7 +1046,7 @@ async function playSingleTrack(uri, trackId) {
 
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
         return;
       }
       const text = await response.text();
@@ -1065,7 +1076,7 @@ async function startPlaylistPlayback() {
 
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setQueueError("No active session. Connect Spotify on the Session page.");
         return;
       }
       const text = await response.text();

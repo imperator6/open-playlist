@@ -99,6 +99,15 @@
         </span>
         <span class="menu-label">Admin Login</span>
       </a>
+      <a href="#" id="dj-menu-link">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6zM10 19a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+          </svg>
+        </span>
+        <span class="menu-label">DJ Login</span>
+      </a>
       <a href="#" id="logout-menu-link" style="display: none">
         <span class="menu-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -134,7 +143,7 @@
     <header class="queue-hero">
       <section class="playback-widget" aria-live="polite">
         <button class="primary home-start-playback" id="home-start-playback-btn" type="button"
-          data-role-required="admin">
+          data-role-required="dj">
           Start playback
         </button>
         <div class="playback-track">
@@ -147,7 +156,7 @@
             <p class="artist" id="home-track-artist"></p>
           </div>
         </div>
-        <div class="playback-controls" data-role-required="admin">
+        <div class="playback-controls" data-role-required="dj">
           <button class="ghost home-play-toggle" id="home-play-toggle" type="button" aria-label="Play">
             <span class="icon" aria-hidden="true"></span>
           </button>
@@ -218,6 +227,27 @@
             <input id="admin-password" type="password" placeholder="Enter admin password" required autocomplete="off" />
           </label>
           <p class="error" id="admin-login-error" role="alert"></p>
+          <div class="modal-actions">
+            <button class="primary" type="submit">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="dj-login-modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="dj-login-title">
+        <div class="modal-header">
+          <h2 id="dj-login-title">DJ Login</h2>
+          <button class="ghost modal-close" type="button" id="dj-login-close" aria-label="Close">
+            Close
+          </button>
+        </div>
+        <form id="dj-login-form" class="modal-form">
+          <label class="field">
+            <span>Password</span>
+            <input id="dj-password" type="password" placeholder="Enter DJ password" required autocomplete="off" />
+          </label>
+          <p class="error" id="dj-login-error" role="alert"></p>
           <div class="modal-actions">
             <button class="primary" type="submit">Login</button>
           </div>

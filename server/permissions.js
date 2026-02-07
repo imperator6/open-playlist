@@ -2,29 +2,36 @@
  * Centralized permission definitions
  *
  * Each action is mapped to the minimum required role.
- * Roles: 'guest' (default) or 'admin'
+ * Roles (hierarchy): 'guest' (default), 'dj', or 'admin'
  *
  * Admin users can perform all actions.
+ * DJ users can perform actions marked as 'dj' or 'guest'.
  * Guest users can only perform actions marked as 'guest'.
  */
+
+const ROLE_LEVELS = {
+  guest: 0,
+  dj: 1,
+  admin: 2
+};
 
 const PERMISSIONS = {
   // Queue management
   "queue:add": "guest",
   "queue:remove:own": "guest",
-  "queue:remove:any": "admin",
+  "queue:remove:any": "dj",
   "queue:clear": "admin",
-  "queue:reorder": "admin",
+  "queue:reorder": "dj",
   "queue:playlist:select": "admin",
   "queue:playlist:load": "admin",
   "queue:autoplay": "admin",
 
   // Playback control
-  "playback:pause": "admin",
-  "playback:resume": "admin",
-  "playback:seek": "admin",
-  "track:play": "admin",
-  "playback:play": "admin",
+  "playback:pause": "dj",
+  "playback:resume": "dj",
+  "playback:seek": "dj",
+  "track:play": "dj",
+  "playback:play": "dj",
 
   // Device management
   "device:transfer": "admin",
@@ -36,7 +43,7 @@ const PERMISSIONS = {
 
   // Playlist management (Spotify playlists)
   "playlist:view": "guest",
-  "playlist:play": "admin",
+  "playlist:play": "dj",
   "playlist:add": "admin",
   "playlist:reorder": "admin"
 };
@@ -44,7 +51,7 @@ const PERMISSIONS = {
 /**
  * Check if a user has permission to perform an action
  * @param {string} action - The action to check (e.g., 'queue:add')
- * @param {string} userRole - The user's role ('admin' or 'guest')
+ * @param {string} userRole - The user's role ('admin', 'dj', or 'guest')
  * @returns {boolean} - True if user has permission
  */
 function hasPermission(action, userRole) {
@@ -59,13 +66,10 @@ function hasPermission(action, userRole) {
     return false;
   }
 
-  // Admin can do everything
-  if (userRole === "admin") {
-    return true;
-  }
+  const userLevel = ROLE_LEVELS[userRole] !== undefined ? ROLE_LEVELS[userRole] : 0;
+  const requiredLevel = ROLE_LEVELS[requiredRole] !== undefined ? ROLE_LEVELS[requiredRole] : ROLE_LEVELS.admin;
 
-  // For guest, check if the action allows guest access
-  return requiredRole === "guest";
+  return userLevel >= requiredLevel;
 }
 
 /**
@@ -74,17 +78,20 @@ function hasPermission(action, userRole) {
  * @returns {string[]} - Array of allowed actions
  */
 function getPermissionsForRole(role) {
-  if (role === "admin") {
-    return Object.keys(PERMISSIONS);
-  }
+  const roleLevel = ROLE_LEVELS[role] !== undefined ? ROLE_LEVELS[role] : 0;
 
-  return Object.keys(PERMISSIONS).filter(
-    (action) => PERMISSIONS[action] === "guest"
-  );
+  return Object.keys(PERMISSIONS).filter((action) => {
+    const requiredLevel =
+      ROLE_LEVELS[PERMISSIONS[action]] !== undefined
+        ? ROLE_LEVELS[PERMISSIONS[action]]
+        : ROLE_LEVELS.admin;
+    return roleLevel >= requiredLevel;
+  });
 }
 
 module.exports = {
   PERMISSIONS,
+  ROLE_LEVELS,
   hasPermission,
   getPermissionsForRole
 };

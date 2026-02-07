@@ -10,7 +10,6 @@ const playlistSearchResults = document.getElementById(
   "playlist-search-results"
 );
 
-const SESSION_PAGE = "session.html";
 const PLAYLIST_KEY = "waiting_list_playlist";
 
 let currentPlaylistId = null;
@@ -152,7 +151,8 @@ async function loadPlaylistById(playlistId, playlistName) {
 
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setStatus("No active session.");
+        setHint("Connect Spotify on the Session page and try again.");
         return;
       }
       const text = await response.text();
@@ -207,7 +207,8 @@ async function fetchPlaylists() {
     const response = await fetch("/api/playlists");
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setStatus("No active session.");
+        setHint("Connect Spotify on the Session page and try again.");
         return;
       }
       const text = await response.text();
@@ -273,7 +274,8 @@ async function startPlaylistPlayback() {
 
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = SESSION_PAGE;
+        setStatus("No active session.");
+        setHint("Connect Spotify on the Session page and try again.");
         return;
       }
       const text = await response.text();
@@ -319,15 +321,14 @@ function setQueueStatus(count) {
   if (!queueStatusCard) return;
   const text = queueStatusCard.querySelector(".queue-count-text");
   if (!text) return;
-  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-  const isAdmin = currentUser && currentUser.role === "admin";
+  const canClear = window.authAPI && window.authAPI.hasPermission("queue:clear");
   if (!count) {
     text.textContent = "Queue is empty.";
     if (clearQueueBtn) clearQueueBtn.style.display = "none";
     return;
   }
   text.textContent = `${count} track${count === 1 ? "" : "s"} in the queue.`;
-  if (clearQueueBtn && isAdmin) clearQueueBtn.style.display = "inline-flex";
+  if (clearQueueBtn && canClear) clearQueueBtn.style.display = "inline-flex";
 }
 
 async function startQueuePoll() {
@@ -399,7 +400,7 @@ if (playlistSearchForm && playlistSearchInput) {
       );
       if (!response.ok) {
         if (response.status === 401) {
-          window.location.href = SESSION_PAGE;
+          setSearchStatus("No active session. Connect Spotify on the Session page.");
           return;
         }
         const text = await response.text();

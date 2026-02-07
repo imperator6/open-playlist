@@ -12,6 +12,7 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const HOST_PIN = process.env.HOST_PIN || "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const DJ_PASSWORD = process.env.DJ_PASSWORD || "";
 const AUTO_REFRESH =
   String(process.env.AUTO_REFRESH || "1").toLowerCase() === "1";
 const SESSION_STORE = process.env.SESSION_STORE || path.join(__dirname, "..", "storage", "session_store.json");
@@ -272,6 +273,10 @@ if (!ADMIN_PASSWORD) {
   logWarn("ADMIN_PASSWORD is not set; admin authentication is disabled");
 }
 
+if (!DJ_PASSWORD) {
+  logWarn("DJ_PASSWORD is not set; DJ authentication is disabled");
+}
+
 readSessionStore();
 readQueueStore();
 
@@ -288,6 +293,11 @@ function verifyHostPin(pin) {
 function verifyAdminPassword(password) {
   if (!ADMIN_PASSWORD) return false;
   return password === ADMIN_PASSWORD;
+}
+
+function verifyDjPassword(password) {
+  if (!DJ_PASSWORD) return false;
+  return password === DJ_PASSWORD;
 }
 
 function getUserSession(req) {
@@ -1014,6 +1024,40 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (pathname === "/api/auth/dj") {
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid DJ login payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    const password = body.password || "";
+    if (!verifyDjPassword(password)) {
+      logWarn("DJ login failed", { hasPassword: Boolean(password) });
+      return sendJson(res, 401, { error: "Invalid password" });
+    }
+
+    const session = getUserSession(req);
+    const djSession = auth.updateSession(session.sessionId, {
+      role: "dj",
+      name: session.name || "DJ"
+    });
+
+    if (!djSession) {
+      return sendJson(res, 500, { error: "Failed to create DJ session" });
+    }
+
+    res.setHeader("Set-Cookie", auth.createSessionCookie(djSession));
+    logInfo("DJ login successful", { sessionId: djSession.sessionId });
+    return sendJson(res, 200, {
+      role: djSession.role,
+      name: djSession.name,
+      sessionId: djSession.sessionId
+    });
+  }
+
   if (pathname === "/api/auth/guest/name") {
     let body = {};
     try {
@@ -1054,14 +1098,14 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/auth/logout") {
     const session = getUserSession(req);
 
-    if (session.role === "admin") {
+    if (session.role !== "guest") {
       const guestSession = auth.updateSession(session.sessionId, {
         role: "guest"
       });
 
       if (guestSession) {
         res.setHeader("Set-Cookie", auth.createSessionCookie(guestSession));
-        logInfo("Admin logged out", { sessionId: guestSession.sessionId });
+        logInfo(`${session.role} logged out`, { sessionId: guestSession.sessionId });
         return sendJson(res, 200, {
           role: guestSession.role,
           name: guestSession.name,
@@ -2151,9 +2195,9 @@ const server = http.createServer(async (req, res) => {
 
     const track = sharedQueue.tracks[index];
     const isOwner = track.addedBy && track.addedBy.sessionId === session.sessionId;
-    const isAdmin = session.role === "admin";
+    const canRemoveAny = hasPermission("queue:remove:any", session.role);
 
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !canRemoveAny) {
       logWarn("Remove denied: not owner", {
         trackIndex: index,
         trackAddedBy: track.addedBy && track.addedBy.name,

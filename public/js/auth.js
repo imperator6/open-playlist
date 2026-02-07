@@ -4,6 +4,8 @@
 
 console.log("auth.js loading...");
 
+const ROLE_LEVELS = { guest: 0, dj: 1, admin: 2 };
+
 let currentUser = {
   role: "guest",
   name: "",
@@ -17,10 +19,17 @@ const adminLoginForm = document.getElementById("admin-login-form");
 const adminLoginError = document.getElementById("admin-login-error");
 const adminCloseBtn = document.getElementById("admin-login-close");
 
+const djModal = document.getElementById("dj-login-modal");
+const djPasswordInput = document.getElementById("dj-password");
+const djLoginForm = document.getElementById("dj-login-form");
+const djLoginError = document.getElementById("dj-login-error");
+const djCloseBtn = document.getElementById("dj-login-close");
+
 console.log("auth.js DOM elements found:");
 console.log("- adminModal:", adminModal);
 console.log("- adminPasswordInput:", adminPasswordInput);
 console.log("- adminLoginForm:", adminLoginForm);
+console.log("- djModal:", djModal);
 
 const nameModal = document.getElementById("name-prompt-modal");
 const nameInput = document.getElementById("guest-name-input");
@@ -32,9 +41,11 @@ const userBadge = document.getElementById("user-badge");
 const userRoleText = document.getElementById("user-role");
 const userNameText = document.getElementById("user-name");
 const adminMenuLink = document.getElementById("admin-menu-link");
+const djMenuLink = document.getElementById("dj-menu-link");
 const logoutMenuLink = document.getElementById("logout-menu-link");
 
 console.log("- adminMenuLink:", adminMenuLink);
+console.log("- djMenuLink:", djMenuLink);
 console.log("- logoutMenuLink:", logoutMenuLink);
 console.log("- userBadge:", userBadge);
 
@@ -75,7 +86,8 @@ function updateUserBadge() {
   if (!userBadge) return;
 
   if (userRoleText) {
-    userRoleText.textContent = currentUser.role === "admin" ? "Admin" : "Guest";
+    const roleLabels = { admin: "Admin", dj: "DJ", guest: "Guest" };
+    userRoleText.textContent = roleLabels[currentUser.role] || "Guest";
   }
 
   if (userNameText) {
@@ -94,18 +106,29 @@ function updateUserBadge() {
 }
 
 /**
+ * Check if current user's role meets the required role level
+ * @param {string} requiredRole - The minimum role required
+ * @returns {boolean}
+ */
+function meetsRoleLevel(requiredRole) {
+  const userLevel = ROLE_LEVELS[currentUser.role] ?? 0;
+  const requiredLevel = ROLE_LEVELS[requiredRole] ?? ROLE_LEVELS.admin;
+  return userLevel >= requiredLevel;
+}
+
+/**
  * Update UI elements based on user role
  */
 function updateUIBasedOnRole() {
-  console.log("updateUIBasedOnRole called, isAdmin:", currentUser.role === "admin");
-  const isAdmin = currentUser.role === "admin";
+  console.log("updateUIBasedOnRole called, role:", currentUser.role);
+  const isGuest = currentUser.role === "guest";
 
   const elements = document.querySelectorAll("[data-role-required]");
   console.log("Found elements with data-role-required:", elements.length);
 
   elements.forEach((element) => {
     const requiredRole = element.dataset.roleRequired;
-    if (requiredRole === "admin" && !isAdmin) {
+    if (!meetsRoleLevel(requiredRole)) {
       console.log("Hiding element:", element.id || element.tagName, element);
       element.style.setProperty("display", "none", "important");
     } else {
@@ -113,12 +136,15 @@ function updateUIBasedOnRole() {
     }
   });
 
+  // Show login links only for guests, show logout for admin/dj
   if (adminMenuLink) {
-    adminMenuLink.style.display = isAdmin ? "none" : "";
+    adminMenuLink.style.display = isGuest ? "" : "none";
   }
-
+  if (djMenuLink) {
+    djMenuLink.style.display = isGuest ? "" : "none";
+  }
   if (logoutMenuLink) {
-    logoutMenuLink.style.display = isAdmin ? "" : "none";
+    logoutMenuLink.style.display = isGuest ? "none" : "";
   }
 }
 
@@ -139,12 +165,10 @@ function hasPermission(permission) {
  */
 function openAdminLogin() {
   console.log("openAdminLogin called");
-  console.log("adminModal:", adminModal);
   if (!adminModal) {
     console.error("adminModal is null - modal element not found!");
     return;
   }
-  console.log("Adding is-open class to modal");
   adminModal.classList.add("is-open");
   adminModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("modal-open");
@@ -206,22 +230,113 @@ async function submitAdminLogin(password) {
 
     await fetchUserStatus();
     closeAdminLogin();
-    
+
     // Close the side menu if it's open
     if (window.menuAPI && typeof window.menuAPI.closeMenu === 'function') {
       window.menuAPI.closeMenu();
     }
-    
+
     // Redirect to index.html if not already there
     if (!window.location.pathname.endsWith('/index.html') && !window.location.pathname.endsWith('/')) {
       window.location.href = '/index.html';
     }
-    
+
     return true;
   } catch (error) {
     console.error("Admin login error", error);
     if (adminLoginError) {
       adminLoginError.textContent = "Login failed. Please try again.";
+    }
+    return false;
+  }
+}
+
+/**
+ * Open DJ login modal
+ */
+function openDjLogin() {
+  console.log("openDjLogin called");
+  if (!djModal) {
+    console.error("djModal is null - modal element not found!");
+    return;
+  }
+  djModal.classList.add("is-open");
+  djModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  if (djPasswordInput) {
+    djPasswordInput.value = "";
+    setTimeout(() => {
+      djPasswordInput.focus();
+    }, 100);
+  }
+  if (djLoginError) {
+    djLoginError.textContent = "";
+  }
+}
+
+/**
+ * Close DJ login modal
+ */
+function closeDjLogin() {
+  if (!djModal) return;
+  djModal.classList.remove("is-open");
+  djModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  if (djPasswordInput) {
+    djPasswordInput.value = "";
+  }
+  if (djLoginError) {
+    djLoginError.textContent = "";
+  }
+}
+
+/**
+ * Submit DJ login
+ * @param {string} password - DJ password
+ * @returns {Promise<boolean>} True if login successful
+ */
+async function submitDjLogin(password) {
+  try {
+    const response = await fetch("/api/auth/dj", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      if (djLoginError) {
+        djLoginError.textContent = data.error || "Login failed";
+      }
+      return false;
+    }
+
+    const data = await response.json();
+    currentUser = {
+      role: data.role,
+      name: data.name,
+      sessionId: data.sessionId,
+      permissions: []
+    };
+
+    await fetchUserStatus();
+    closeDjLogin();
+
+    // Close the side menu if it's open
+    if (window.menuAPI && typeof window.menuAPI.closeMenu === 'function') {
+      window.menuAPI.closeMenu();
+    }
+
+    // Redirect to index.html if not already there
+    if (!window.location.pathname.endsWith('/index.html') && !window.location.pathname.endsWith('/')) {
+      window.location.href = '/index.html';
+    }
+
+    return true;
+  } catch (error) {
+    console.error("DJ login error", error);
+    if (djLoginError) {
+      djLoginError.textContent = "Login failed. Please try again.";
     }
     return false;
   }
@@ -366,7 +481,7 @@ async function ensureUserHasName() {
 }
 
 /**
- * Logout current admin user
+ * Logout current user (admin or dj)
  */
 async function logout() {
   try {
@@ -393,6 +508,7 @@ async function logout() {
   }
 }
 
+// Admin login form
 if (adminLoginForm) {
   adminLoginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -415,6 +531,30 @@ if (adminModal) {
   });
 }
 
+// DJ login form
+if (djLoginForm) {
+  djLoginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = djPasswordInput.value;
+    await submitDjLogin(password);
+  });
+}
+
+if (djCloseBtn) {
+  djCloseBtn.addEventListener("click", () => {
+    closeDjLogin();
+  });
+}
+
+if (djModal) {
+  djModal.addEventListener("click", (event) => {
+    if (event.target === djModal) {
+      closeDjLogin();
+    }
+  });
+}
+
+// Menu links
 console.log("adminMenuLink element:", adminMenuLink);
 if (adminMenuLink) {
   console.log("Attaching click event listener to admin menu link");
@@ -425,6 +565,13 @@ if (adminMenuLink) {
   });
 } else {
   console.error("adminMenuLink element not found!");
+}
+
+if (djMenuLink) {
+  djMenuLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    openDjLogin();
+  });
 }
 
 if (logoutMenuLink) {
@@ -449,6 +596,9 @@ document.addEventListener("keydown", (event) => {
     if (adminModal && adminModal.classList.contains("is-open")) {
       closeAdminLogin();
     }
+    if (djModal && djModal.classList.contains("is-open")) {
+      closeDjLogin();
+    }
     if (nameModal && nameModal.classList.contains("is-open")) {
       closeNamePrompt();
     }
@@ -461,6 +611,8 @@ window.authAPI = {
   hasPermission,
   openAdminLogin,
   closeAdminLogin,
+  openDjLogin,
+  closeDjLogin,
   openNamePrompt,
   closeNamePrompt,
   ensureUserHasName,

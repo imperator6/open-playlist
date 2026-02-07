@@ -13,6 +13,7 @@ const homeProgressBar = document.getElementById("home-progress-bar");
 const homeElapsed = document.getElementById("home-elapsed");
 const homeRemaining = document.getElementById("home-remaining");
 const homeStartPlaybackBtn = document.getElementById("home-start-playback-btn");
+const homeSessionError = document.getElementById("queue-error");
 const playbackWidget = document.querySelector(".playback-widget");
 const playbackTrack = document.querySelector(".playback-track");
 const playbackControls = document.querySelector(".playback-controls");
@@ -27,7 +28,6 @@ function updateProgressFill() {
 }
 const homeLoadQueueBtn = document.getElementById("home-load-queue-btn");
 const homeClearQueueBtn = document.getElementById("home-clear-queue-btn");
-const MENU_SESSION_PAGE = "session.html";
 
 let homeSelectedDeviceId = null;
 let homeProgressTimer = null;
@@ -53,6 +53,11 @@ function setHomePlaybackHint(text) {
 function setHomeDeviceStatus(text) {
   if (!homeDeviceStatus) return;
   homeDeviceStatus.textContent = text || "";
+}
+
+function setHomeSessionError(text) {
+  if (!homeSessionError) return;
+  homeSessionError.textContent = text || "";
 }
 
 function formatArtists(artists = []) {
@@ -121,13 +126,12 @@ function renderHomeTrackDetails(track) {
 }
 
 function setPlaybackVisibility(hasPlayback) {
-  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-  const isAdmin = currentUser && currentUser.role === "admin";
+  const canControl = window.authAPI && window.authAPI.hasPermission("playback:pause");
   if (playbackTrack) {
     playbackTrack.style.display = hasPlayback ? "" : "none";
   }
   if (playbackControls) {
-    playbackControls.style.display = hasPlayback && isAdmin ? "" : "none";
+    playbackControls.style.display = hasPlayback && canControl ? "" : "none";
   }
   if (playbackWidget) {
     playbackWidget.classList.toggle("is-empty", !hasPlayback);
@@ -141,11 +145,6 @@ async function fetchStatus() {
       console.error("Status check failed", response.status);
       return;
     }
-    const data = await response.json();
-    if (!data.connected && !window.location.pathname.endsWith(MENU_SESSION_PAGE)) {
-      window.location.href = MENU_SESSION_PAGE;
-      return;
-    }
   } catch (error) {
     console.error("Status check error", error);
   }
@@ -157,16 +156,16 @@ function setHomeQueueStatus(count) {
   if (homeQueueStatus) {
     const text = homeQueueStatus.querySelector(".queue-count-text");
     if (text) {
-      const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-      const isAdmin = currentUser && currentUser.role === "admin";
+      const canLoad = window.authAPI && window.authAPI.hasPermission("queue:playlist:load");
+      const canClear = window.authAPI && window.authAPI.hasPermission("queue:clear");
       if (!count) {
         text.textContent = "Queue is empty.";
-        if (homeLoadQueueBtn && isAdmin) homeLoadQueueBtn.style.display = "inline-flex";
+        if (homeLoadQueueBtn && canLoad) homeLoadQueueBtn.style.display = "inline-flex";
         if (homeClearQueueBtn) homeClearQueueBtn.style.display = "none";
       } else {
         text.textContent = `${count} track${count === 1 ? "" : "s"} in the queue.`;
         if (homeLoadQueueBtn) homeLoadQueueBtn.style.display = "none";
-        if (homeClearQueueBtn && isAdmin) homeClearQueueBtn.style.display = "inline-flex";
+        if (homeClearQueueBtn && canClear) homeClearQueueBtn.style.display = "inline-flex";
       }
     }
   }
@@ -182,10 +181,9 @@ function setHomeQueueStatus(count) {
 function setHomeStartPlaybackVisibility(show) {
   if (!homeStartPlaybackBtn) return;
 
-  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-  const isAdmin = currentUser && currentUser.role === "admin";
+  const canPlay = window.authAPI && window.authAPI.hasPermission("playback:play");
 
-  if (isAdmin) {
+  if (canPlay) {
     homeStartPlaybackBtn.style.display = show ? "inline-flex" : "none";
   } else {
     homeStartPlaybackBtn.style.display = "none";
@@ -281,7 +279,10 @@ async function startHomePlaybackLongPoll() {
     const response = await fetch(`/api/queue/stream${query}`);
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = MENU_SESSION_PAGE;
+        setHomeSessionError("No active session. Connect Spotify on the Session page.");
+        setHomePlaybackStatus("Disconnected", false);
+        setHomePlaybackHint("No active session. Connect Spotify on the Session page.");
+        setTimeout(startHomePlaybackLongPoll, 2000);
         return;
       }
       const text = await response.text();
@@ -293,6 +294,7 @@ async function startHomePlaybackLongPoll() {
     }
 
     const data = await response.json();
+    setHomeSessionError("");
     homePlaybackSince = data.updatedAt || new Date().toISOString();
     applyHomePlaybackPayload(data);
     startHomePlaybackLongPoll();
@@ -341,7 +343,9 @@ async function startHomeDevicesLongPoll() {
     const response = await fetch(`/api/player/devices/stream${query}`);
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = MENU_SESSION_PAGE;
+        setHomeSessionError("No active session. Connect Spotify on the Session page.");
+        setHomeDeviceStatus("No active session. Connect Spotify on the Session page.");
+        setTimeout(startHomeDevicesLongPoll, 2000);
         return;
       }
       const text = await response.text();
@@ -352,6 +356,7 @@ async function startHomeDevicesLongPoll() {
     }
 
     const data = await response.json();
+    setHomeSessionError("");
     homeDevicesSince = data.updatedAt || new Date().toISOString();
     const devices = Array.isArray(data.devices) ? data.devices : [];
     const active = devices.find((device) => device.is_active);
@@ -377,7 +382,8 @@ async function refreshHomeDevices() {
     });
     if (!response.ok) {
       if (response.status === 401) {
-        window.location.href = MENU_SESSION_PAGE;
+        setHomeSessionError("No active session. Connect Spotify on the Session page.");
+        setHomeDeviceStatus("No active session. Connect Spotify on the Session page.");
         return;
       }
       const text = await response.text();
@@ -386,6 +392,7 @@ async function refreshHomeDevices() {
       return;
     }
     setHomeDeviceStatus("Devices refreshed.");
+    setHomeSessionError("");
   } catch (error) {
     console.error("Home devices refresh error", error);
     setHomeDeviceStatus("Unable to refresh devices.");
@@ -408,6 +415,7 @@ async function updateHomeAutoplay(enabled) {
     }
     const data = await response.json();
     homeAutoplayToggle.checked = Boolean(data.autoPlayEnabled);
+    setHomeSessionError("");
   } catch (error) {
     console.error("Home autoplay update error", error);
   }

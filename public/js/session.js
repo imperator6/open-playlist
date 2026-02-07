@@ -16,12 +16,15 @@ const sessionInfo = document.getElementById("session-info");
 const hostPinInput = document.getElementById("host-pin");
 
 let hostPinRequired = true;
+let hasAdminAccess = false;
 
 async function checkAdminAccess() {
   await window.authAPI.fetchUserStatus();
   const user = window.authAPI.getCurrentUser();
-  if (user.role !== "admin") {
-    window.location.href = "index.html";
+  hasAdminAccess = user.role === "admin";
+  if (!hasAdminAccess) {
+    setError("Admin access required. Please log in as admin to manage the session.");
+    setHostControlsEnabled(false);
   }
 }
 
@@ -37,6 +40,10 @@ function setHostControlsEnabled(enabled) {
 }
 
 function updateHostControls() {
+  if (!hasAdminAccess) {
+    setHostControlsEnabled(false);
+    return;
+  }
   if (!hostPinRequired) {
     setHostControlsEnabled(true);
     return;
