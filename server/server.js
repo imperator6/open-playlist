@@ -671,6 +671,24 @@ async function playTrackUri(uri, deviceId) {
   return true;
 }
 
+function ensureTrackAtFront(trackId) {
+  if (!trackId || !Array.isArray(sharedQueue.tracks)) return;
+  const index = sharedQueue.tracks.findIndex((t) => t.id === trackId);
+  if (index <= 0) {
+    sharedQueue.currentIndex = 0;
+    return;
+  }
+  const [track] = sharedQueue.tracks.splice(index, 1);
+  sharedQueue.tracks.unshift(track);
+  sharedQueue.currentIndex = 0;
+  sharedQueue.updatedAt = new Date().toISOString();
+  persistQueueStore();
+  logInfo("ensureTrackAtFront: moved track to position 0", {
+    trackId,
+    fromIndex: index
+  });
+}
+
 async function autoPlayTick() {
   if (!sharedQueue.autoPlayEnabled) {
     logInfo("Auto play tick skipped: disabled");
@@ -723,6 +741,7 @@ async function autoPlayTick() {
         sharedQueue.activeDeviceId
       );
       if (started) {
+        ensureTrackAtFront(currentTrack.id);
         sharedQueue.lastSeenTrackId = currentTrack.id || null;
         sharedQueue.lastAdvanceAt = now;
         persistQueueStore();
@@ -782,6 +801,7 @@ async function autoPlayTick() {
           sharedQueue.currentIndex -= 1;
         }
       }
+      ensureTrackAtFront(nextTrack.id);
       sharedQueue.updatedAt = new Date().toISOString();
       persistQueueStore();
       logInfo("Auto play: next track sent to Spotify", {
@@ -869,8 +889,7 @@ async function autoPlayTick() {
             sharedQueue.currentIndex -= 1;
           }
         }
-        sharedQueue.updatedAt = new Date().toISOString();
-        persistQueueStore();
+        ensureTrackAtFront(nextTrack.id);
         logInfo("Auto play: next track sent to Spotify", {
           index: sharedQueue.currentIndex,
           trackId: nextTrack.id || null
@@ -1505,11 +1524,9 @@ const server = http.createServer(async (req, res) => {
     if (trackId && Array.isArray(sharedQueue.tracks)) {
       const index = sharedQueue.tracks.findIndex((track) => track.id === trackId);
       if (index >= 0) {
-        sharedQueue.currentIndex = index;
         sharedQueue.lastSeenTrackId = trackId;
         sharedQueue.lastAdvanceAt = Date.now();
-        sharedQueue.updatedAt = new Date().toISOString();
-        persistQueueStore();
+        ensureTrackAtFront(trackId);
       }
     }
 
