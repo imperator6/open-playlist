@@ -33,16 +33,16 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.5rem;
-  padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom));
+  padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-top));
   background: rgba(16, 18, 22, 0.95);
   backdrop-filter: blur(14px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 100;
 }
 
@@ -137,7 +137,7 @@ h1 {
 
 .playback-widget {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   max-width: 1100px;
@@ -149,10 +149,10 @@ h1 {
   gap: 0.5rem 0.75rem;
   background: rgba(18, 18, 18, 0.98);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 0.5rem 1rem 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.5rem 1rem calc(0.65rem + env(safe-area-inset-bottom));
   z-index: 90;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .queue-status-card {
@@ -1364,7 +1364,7 @@ body.overlay-open {
 
 @media (max-width: 640px) {
   .page {
-    padding: 64px 16px 120px;
+    padding: 120px 16px 64px;
   }
 
   .playback-widget {
