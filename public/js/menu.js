@@ -60,4 +60,9 @@
   if (deviceBtn) deviceBtn.addEventListener("click", openDevices);
   if (deviceClose) deviceClose.addEventListener("click", shutDevices);
   if (deviceBackdrop) deviceBackdrop.addEventListener("click", shutDevices);
+
+  // Expose menu API globally
+  window.menuAPI = {
+    closeMenu: shut
+  };
 })();

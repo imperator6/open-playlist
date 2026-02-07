@@ -206,6 +206,17 @@ async function submitAdminLogin(password) {
 
     await fetchUserStatus();
     closeAdminLogin();
+    
+    // Close the side menu if it's open
+    if (window.menuAPI && typeof window.menuAPI.closeMenu === 'function') {
+      window.menuAPI.closeMenu();
+    }
+    
+    // Redirect to index.html if not already there
+    if (!window.location.pathname.endsWith('/index.html') && !window.location.pathname.endsWith('/')) {
+      window.location.href = '/index.html';
+    }
+    
     return true;
   } catch (error) {
     console.error("Admin login error", error);
