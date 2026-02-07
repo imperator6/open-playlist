@@ -286,10 +286,14 @@
             <span class="queue-user-time"></span>
           </span>
         </div>
-        <button class="ghost queue-remove" data-action="remove" type="button" aria-label="Remove track" title="Remove">
+        <button class="queue-action-btn queue-remove" data-action="remove" type="button" aria-label="Remove track" title="Remove">
           <span class="icon" aria-hidden="true"></span>
         </button>
-        <button class="ghost" data-action="play" type="button">Play</button>
+        <button class="queue-action-btn queue-play-btn" data-action="play" type="button" aria-label="Play track" title="Play">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19" /></svg>
+          </span>
+        </button>
       </div>
     </article>
     <button class="queue-insert" type="button" data-open-search>
