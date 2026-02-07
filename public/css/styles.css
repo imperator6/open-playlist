@@ -518,29 +518,28 @@ h1 {
 }
 
 .queue-status-card {
-  margin-top: 1rem;
-  background: rgba(15, 17, 22, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.9rem;
-  padding: 0.75rem 0.9rem;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.queue-status-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: nowrap;
-  min-width: 0;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
 }
 
 .queue-count-text {
   margin: 0;
-  font-size: 0.95rem;
-  color: var(--text);
+  font-size: 0.8rem;
+  color: var(--muted);
   flex: 1;
   min-width: 0;
+}
+
+.queue-status-card .clear-queue-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  flex-shrink: 0;
 }
 
 .playback-track {
@@ -1300,8 +1299,8 @@ body.menu-open {
 .queue-card:not(.is-current) {
   display: grid;
   grid-template-columns: 4rem 1fr auto auto auto;
-  gap: 0.75rem;
-  padding: 0.75rem;
+  gap: 0.5rem;
+  padding: 0.5rem;
   background: var(--card);
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1635,27 +1634,6 @@ body.menu-open {
   row-gap: 0.4rem;
 }
 
-.queue-now-actions {
-  display: none;
-  align-items: center;
-}
-
-.queue-card.is-current .queue-now-actions {
-  display: flex;
-}
-
-.queue-now-actions .icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  display: inline-block;
-}
-
-.queue-now-actions svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: currentColor;
-}
-
 .queue-remove .icon {
   width: 1.1rem;
   height: 1.1rem;
@@ -1837,15 +1815,6 @@ body.menu-open {
     justify-content: flex-start;
   }
 
-  .queue-card.is-current .queue-now-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
-
-  .queue-card:not(.is-current) .queue-now-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
 }
 
 @media (min-width: 720px) {

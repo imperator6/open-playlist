@@ -121,11 +121,13 @@ function renderHomeTrackDetails(track) {
 }
 
 function setPlaybackVisibility(hasPlayback) {
+  const currentUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+  const isAdmin = currentUser && currentUser.role === "admin";
   if (playbackTrack) {
     playbackTrack.style.display = hasPlayback ? "" : "none";
   }
   if (playbackControls) {
-    playbackControls.style.display = hasPlayback ? "" : "none";
+    playbackControls.style.display = hasPlayback && isAdmin ? "" : "none";
   }
   if (playbackWidget) {
     playbackWidget.classList.toggle("is-empty", !hasPlayback);

@@ -1,355 +1,320 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Spotify Search</title>
-    <link rel="stylesheet" href="css/styles.css" />
-  </head>
-  <body>
-    <main class="page">
-      <nav class="menu" aria-label="Primary">
-        <div id="user-badge" class="user-badge">
-          <span class="user-badge-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-3.31 0-6 2.02-6 4.5V20h12v-1.5c0-2.48-2.69-4.5-6-4.5z"/></svg>
-          </span>
-          <span id="user-role" class="user-role"></span>
-          <span id="user-name" class="user-name"></span>
-        </div>
-        <div class="menu-right">
-          <button class="menu-icon-btn" id="device-overlay-btn" type="button" aria-label="Devices" data-role-required="admin">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 17H7V5h10v14zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
-          </button>
-          <label class="toggle menu-toggle" for="home-autoplay-toggle" data-role-required="admin">
-            <span class="toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6H4a8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8z"/><polygon points="10,10 10,16 15,13"/></svg></span>
-            <span class="sr-only">Auto-play</span>
-            <input id="home-autoplay-toggle" type="checkbox" />
-            <span class="toggle-track" aria-hidden="true">
-              <span class="toggle-thumb"></span>
-            </span>
-          </label>
-          <button class="menu-burger" id="menu-burger" type="button" aria-label="Open menu" aria-expanded="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
-          </button>
-        </div>
-      </nav>
-      <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
-      <div class="menu-drawer" id="menu-drawer" aria-hidden="true">
-        <button class="menu-drawer-close" id="menu-drawer-close" type="button" aria-label="Close menu">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.89 4.88a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.42L13.41 12l4.89-4.88a1 1 0 0 0 0-1.41z"/></svg>
-        </button>
-        <a href="index.html" class="active">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9a1 1 0 0 1-1 1h-4v-6h-2v6H7a1 1 0 0 1-1-1v-9H3l9-8z"/></svg>
-          </span>
-          <span class="menu-label">Home</span>
-        </a>
-        <a href="playlist.html">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v8.17l2.59-2.58a1 1 0 1 1 1.41 1.41l-4.3 4.3a1 1 0 0 1-1.4 0l-4.3-4.3a1 1 0 1 1 1.41-1.41L11 12.17V4a1 1 0 0 1 1-1zm-7 12a1 1 0 0 1 1 1v2h12v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/></svg>
-          </span>
-          <span class="menu-label">Playlist</span>
-        </a>
-        <a href="recently.html">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.32 4.8a1 1 0 1 1 1.86.74A6 6 0 1 0 12 6a1 1 0 1 1 0-2zm-1 3a1 1 0 0 1 1 1v4.2l3 1.7a1 1 0 1 1-1 1.74l-3.5-2A1 1 0 0 1 11 12V8a1 1 0 0 1 1-1z"/></svg>
-          </span>
-          <span class="menu-label">Recently Played</span>
-        </a>
-        <a href="session.html">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9a2 2 0 0 1-.94.44V11a2 2 0 1 1-2 0V8.7a2 2 0 0 1-.94-.44l-2 .9a2 2 0 1 1-1-1.73l2-.9A2 2 0 0 1 12 3zm0 6a1 1 0 1 0 0 2a1 1 0 0 0 0-2zm7 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 19 12zm-14 0a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 5 12zm7 7a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9A2 2 0 0 1 12 19zm0 0a2 2 0 0 1-2 2c0 .18.02.36.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 10 19z"/></svg>
-          </span>
-          <span class="menu-label">Session</span>
-        </a>
-        <a href="#" id="admin-menu-link">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.5 4.1-3.3 7.7-7 8.9V12H5V6.3l7-3.1v8.8z"/></svg>
-          </span>
-          <span class="menu-label">Admin Login</span>
-        </a>
-        <a href="#" id="logout-menu-link" style="display: none">
-          <span class="menu-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4zM5 5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h7v-2H5V5z"/></svg>
-          </span>
-          <span class="menu-label">Logout</span>
-        </a>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotify Search</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+
+<body>
+  <main class="page">
+    <nav class="menu" aria-label="Primary">
+      <div id="user-badge" class="user-badge">
+        <span class="user-badge-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-3.31 0-6 2.02-6 4.5V20h12v-1.5c0-2.48-2.69-4.5-6-4.5z" />
+          </svg>
+        </span>
+        <span id="user-role" class="user-role"></span>
+        <span id="user-name" class="user-name"></span>
       </div>
-      <div class="device-overlay-backdrop" id="device-overlay-backdrop" aria-hidden="true"></div>
-      <div class="device-overlay" id="device-overlay" aria-hidden="true">
-        <div class="device-overlay-header">
-          <h3>Devices</h3>
-          <button class="device-overlay-close" id="device-overlay-close" type="button" aria-label="Close">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.89 4.88a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.42L13.41 12l4.89-4.88a1 1 0 0 0 0-1.41z"/></svg>
-          </button>
-        </div>
-        <p class="device-overlay-status" id="home-device-status"></p>
-        <ul class="device-list" id="device-list"></ul>
-        <div class="device-overlay-divider"></div>
-        <button class="device-refresh-btn" id="home-device-refresh" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 6h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L14 10h6V4l-2.35 2.35z"/></svg>
-          Refresh devices
+      <div class="menu-right">
+        <button class="menu-icon-btn" id="device-overlay-btn" type="button" aria-label="Devices"
+          data-role-required="admin">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 17H7V5h10v14zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
+          </svg>
+        </button>
+        <label class="toggle menu-toggle" for="home-autoplay-toggle" data-role-required="admin">
+          <span class="toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24">
+              <path
+                d="M12 5V1L7 6l5 5V7a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6H4a8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8z" />
+              <polygon points="10,10 10,16 15,13" />
+            </svg></span>
+          <span class="sr-only">Auto-play</span>
+          <input id="home-autoplay-toggle" type="checkbox" />
+          <span class="toggle-track" aria-hidden="true">
+            <span class="toggle-thumb"></span>
+          </span>
+        </label>
+        <button class="menu-burger" id="menu-burger" type="button" aria-label="Open menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+          </svg>
         </button>
       </div>
-      <header class="queue-hero">
-        <section class="playback-widget" aria-live="polite">
-          <button
-            class="primary home-start-playback"
-            id="home-start-playback-btn"
-            type="button"
-            data-role-required="admin"
-          >
-            Start playback
+    </nav>
+    <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
+    <div class="menu-drawer" id="menu-drawer" aria-hidden="true">
+      <button class="menu-drawer-close" id="menu-drawer-close" type="button" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.89 4.88a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.42L13.41 12l4.89-4.88a1 1 0 0 0 0-1.41z" />
+        </svg>
+      </button>
+      <a href="index.html" class="active">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3l9 8h-3v9a1 1 0 0 1-1 1h-4v-6h-2v6H7a1 1 0 0 1-1-1v-9H3l9-8z" />
+          </svg>
+        </span>
+        <span class="menu-label">Home</span>
+      </a>
+      <a href="playlist.html">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 3a1 1 0 0 1 1 1v8.17l2.59-2.58a1 1 0 1 1 1.41 1.41l-4.3 4.3a1 1 0 0 1-1.4 0l-4.3-4.3a1 1 0 1 1 1.41-1.41L11 12.17V4a1 1 0 0 1 1-1zm-7 12a1 1 0 0 1 1 1v2h12v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z" />
+          </svg>
+        </span>
+        <span class="menu-label">Playlist</span>
+      </a>
+      <a href="recently.html">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 4a8 8 0 1 1-7.32 4.8a1 1 0 1 1 1.86.74A6 6 0 1 0 12 6a1 1 0 1 1 0-2zm-1 3a1 1 0 0 1 1 1v4.2l3 1.7a1 1 0 1 1-1 1.74l-3.5-2A1 1 0 0 1 11 12V8a1 1 0 0 1 1-1z" />
+          </svg>
+        </span>
+        <span class="menu-label">Recently Played</span>
+      </a>
+      <a href="session.html">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9a2 2 0 0 1-.94.44V11a2 2 0 1 1-2 0V8.7a2 2 0 0 1-.94-.44l-2 .9a2 2 0 1 1-1-1.73l2-.9A2 2 0 0 1 12 3zm0 6a1 1 0 1 0 0 2a1 1 0 0 0 0-2zm7 3a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 19 12zm-14 0a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 5 12zm7 7a2 2 0 0 1 2 2c0 .18-.02.36-.06.53l2 .9a2 2 0 1 1-1 1.73l-2-.9A2 2 0 0 1 12 19zm0 0a2 2 0 0 1-2 2c0 .18.02.36.06.53l-2 .9a2 2 0 1 1-1 1.73l2-.9A2 2 0 0 1 10 19z" />
+          </svg>
+        </span>
+        <span class="menu-label">Session</span>
+      </a>
+      <a href="#" id="admin-menu-link">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.5 4.1-3.3 7.7-7 8.9V12H5V6.3l7-3.1v8.8z" />
+          </svg>
+        </span>
+        <span class="menu-label">Admin Login</span>
+      </a>
+      <a href="#" id="logout-menu-link" style="display: none">
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4zM5 5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h7v-2H5V5z" />
+          </svg>
+        </span>
+        <span class="menu-label">Logout</span>
+      </a>
+    </div>
+    <div class="device-overlay-backdrop" id="device-overlay-backdrop" aria-hidden="true"></div>
+    <div class="device-overlay" id="device-overlay" aria-hidden="true">
+      <div class="device-overlay-header">
+        <h3>Devices</h3>
+        <button class="device-overlay-close" id="device-overlay-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.89 4.88a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.42L13.41 12l4.89-4.88a1 1 0 0 0 0-1.41z" />
+          </svg>
+        </button>
+      </div>
+      <p class="device-overlay-status" id="home-device-status"></p>
+      <ul class="device-list" id="device-list"></ul>
+      <div class="device-overlay-divider"></div>
+      <button class="device-refresh-btn" id="home-device-refresh" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 6h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L14 10h6V4l-2.35 2.35z" />
+        </svg>
+        Refresh devices
+      </button>
+    </div>
+    <header class="queue-hero">
+      <section class="playback-widget" aria-live="polite">
+        <button class="primary home-start-playback" id="home-start-playback-btn" type="button"
+          data-role-required="admin">
+          Start playback
+        </button>
+        <div class="playback-track">
+          <div class="home-cover">
+            <img id="home-track-image" alt="" />
+          </div>
+          <div class="home-track-info">
+            <p class="meta" id="home-track-album"></p>
+            <h3 id="home-track-title">Nothing playing</h3>
+            <p class="artist" id="home-track-artist"></p>
+          </div>
+        </div>
+        <div class="playback-controls" data-role-required="admin">
+          <button class="ghost home-play-toggle" id="home-play-toggle" type="button" aria-label="Play">
+            <span class="icon" aria-hidden="true"></span>
           </button>
-          <div class="playback-track">
-            <div class="home-cover">
-              <img id="home-track-image" alt="" />
-            </div>
-            <div class="home-track-info">
-              <p class="meta" id="home-track-album"></p>
-              <h3 id="home-track-title">Nothing playing</h3>
-              <p class="artist" id="home-track-artist"></p>
-            </div>
+        </div>
+        <div class="home-progress">
+          <span class="home-time-elapsed" id="home-elapsed">0:00</span>
+          <input class="home-progress-bar" id="home-progress-bar" type="range" min="0" max="100" value="0"
+            aria-label="Seek position" />
+          <span class="home-time-remaining" id="home-remaining">-0:00</span>
+        </div>
+      </section>
+    </header>
+    <section class="queue-section">
+      <div class="queue-header">
+        <div>
+          <h2>Up next (Playlist waiting list)</h2>
+          <p class="subtle" id="queue-status"></p>
+          <p class="error" id="queue-error" role="alert"></p>
+          <div class="playback-status">
+            <p class="status" id="home-playback-status"></p>
+            <p class="hint" id="home-playback-hint"></p>
           </div>
-          <div class="playback-controls" data-role-required="admin">
-            <button
-              class="ghost home-play-toggle"
-              id="home-play-toggle"
-              type="button"
-              aria-label="Play"
-            >
-              <span class="icon" aria-hidden="true"></span>
-            </button>
-          </div>
-          <div class="home-progress">
-            <span class="home-time-elapsed" id="home-elapsed">0:00</span>
-            <input
-              class="home-progress-bar"
-              id="home-progress-bar"
-              type="range"
-              min="0"
-              max="100"
-              value="0"
-              aria-label="Seek position"
-            />
-            <span class="home-time-remaining" id="home-remaining">-0:00</span>
-          </div>
-        </section>
-      </header>
-      <section class="queue-section">
-        <div class="queue-header">
-          <div>
-            <h2>Up next (Playlist waiting list)</h2>
-            <p class="subtle" id="queue-status"></p>
-            <p class="error" id="queue-error" role="alert"></p>
-              <div class="playback-status">
-              <p class="status" id="home-playback-status"></p>
-              <p class="hint" id="home-playback-hint"></p>
-            </div>
-            <button
-            class="danger load-queue-btn"
-            id="home-load-queue-btn"
-            type="button"
-            data-role-required="admin"
-          >
+          <button class="danger load-queue-btn" id="home-load-queue-btn" type="button" data-role-required="admin">
             Load Songs from a Playlist
           </button>
-          </div>
         </div>
-        <div class="queue-overlay" id="queue-overlay" aria-hidden="true">
-          <div
-            class="queue-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="queue-overlay-title"
-          >
-            <div class="queue-dialog-header">
-              <div>
-                <p class="eyebrow">Insert</p>
-                <h3 id="queue-overlay-title">Search for a song</h3>
-              </div>
-              <button
-                class="ghost queue-dialog-close"
-                type="button"
-                id="queue-overlay-close"
-                aria-label="Close search dialog"
-              >
-                Close
-              </button>
+      </div>
+      <div class="queue-overlay" id="queue-overlay" aria-hidden="true">
+        <div class="queue-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-overlay-title">
+          <div class="queue-dialog-header">
+            <div>
+              <p class="eyebrow">Insert</p>
+              <h3 id="queue-overlay-title">Search for a song</h3>
             </div>
-            <form class="queue-search" id="queue-search-form">
-              <label class="field">
-                <span>Add tracks</span>
-                <input
-                  id="queue-search-input"
-                  type="search"
-                  placeholder="Search tracks to add"
-                  autocomplete="off"
-                />
-              </label>
-              <button class="primary" type="submit">Search</button>
-              <button class="ghost" id="clear-search-btn" type="button">
-                Clear results
-              </button>
-            </form>
-            <div class="queue-placement" id="queue-placement"></div>
-            <div class="queue-results" id="queue-results"></div>
-          </div>
-        </div>
-        <div class="queue-list" id="queue-list"></div>
-      </section>
-
-      <div class="modal" id="admin-login-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
-          <div class="modal-header">
-            <h2 id="admin-login-title">Admin Login</h2>
-            <button
-              class="ghost modal-close"
-              type="button"
-              id="admin-login-close"
-              aria-label="Close"
-            >
+            <button class="ghost queue-dialog-close" type="button" id="queue-overlay-close"
+              aria-label="Close search dialog">
               Close
             </button>
           </div>
-          <form id="admin-login-form" class="modal-form">
+          <form class="queue-search" id="queue-search-form">
             <label class="field">
-              <span>Password</span>
-              <input
-                id="admin-password"
-                type="password"
-                placeholder="Enter admin password"
-                required
-                autocomplete="off"
-              />
+              <span>Add tracks</span>
+              <input id="queue-search-input" type="search" placeholder="Search tracks to add" autocomplete="off" />
             </label>
-            <p class="error" id="admin-login-error" role="alert"></p>
-            <div class="modal-actions">
-              <button class="primary" type="submit">Login</button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <div class="modal" id="name-prompt-modal" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="name-prompt-title">
-          <div class="modal-header">
-            <h2 id="name-prompt-title">Enter Your Name</h2>
-            <button
-              class="ghost modal-close"
-              type="button"
-              id="name-prompt-close"
-              aria-label="Close"
-            >
-              Close
+            <button class="primary" type="submit">Search</button>
+            <button class="ghost" id="clear-search-btn" type="button">
+              Clear results
             </button>
-          </div>
-          <form id="name-prompt-form" class="modal-form">
-            <label class="field">
-              <span>Your Name</span>
-              <input
-                id="guest-name-input"
-                type="text"
-                placeholder="Enter your name"
-                required
-                maxlength="50"
-                autocomplete="off"
-              />
-            </label>
-            <p class="hint">This will be shown when you add songs to the queue.</p>
-            <p class="error" id="name-prompt-error" role="alert"></p>
-            <div class="modal-actions">
-              <button class="primary" type="submit">Save Name</button>
-            </div>
           </form>
+          <div class="queue-placement" id="queue-placement"></div>
+          <div class="queue-results" id="queue-results"></div>
         </div>
       </div>
-    </main>
+      <div class="queue-list" id="queue-list"></div>
+    </section>
 
-    <template id="home-now-card">
-      <article class="queue-card no-action">
-        <span class="activity" aria-hidden="true"></span>
-        <div class="cover">
-          <img alt="" />
+    <div class="modal" id="admin-login-modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+        <div class="modal-header">
+          <h2 id="admin-login-title">Admin Login</h2>
+          <button class="ghost modal-close" type="button" id="admin-login-close" aria-label="Close">
+            Close
+          </button>
         </div>
-        <div class="queue-body">
-          <p class="meta"></p>
-          <h3></h3>
-          <p class="artist"></p>
-        </div>
-      </article>
-    </template>
-
-    <template id="queue-card">
-      <article class="queue-card">
-        <div class="cover">
-          <img alt="" />
-        </div>
-        <div class="queue-body">
-          <p class="meta"></p>
-          <h3></h3>
-          <p class="artist"></p>
-        </div>
-        <div class="queue-play">
-          <div class="queue-user-badge" aria-hidden="true">
-            <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path
-                  d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-3.31 0-6 2.02-6 4.5V20h12v-1.5c0-2.48-2.69-4.5-6-4.5z"
-                ></path>
-              </svg>
-            </span>
-            <span class="queue-user-info">
-              <span class="queue-user-name"></span>
-              <span class="queue-user-time"></span>
-            </span>
+        <form id="admin-login-form" class="modal-form">
+          <label class="field">
+            <span>Password</span>
+            <input id="admin-password" type="password" placeholder="Enter admin password" required autocomplete="off" />
+          </label>
+          <p class="error" id="admin-login-error" role="alert"></p>
+          <div class="modal-actions">
+            <button class="primary" type="submit">Login</button>
           </div>
-          <button
-            class="ghost queue-remove"
-            data-action="remove"
-            type="button"
-            aria-label="Remove track"
-            title="Remove"
-          >
-            <span class="icon" aria-hidden="true"></span>
-          </button>
-          <button class="ghost" data-action="play" type="button">Play</button>
-        </div>
-        <div class="queue-now-actions" data-now-actions>
-          <button
-            class="ghost"
-            data-action="toggle-play"
-            type="button"
-            aria-label="Pause playback"
-          >
-            <span class="icon" aria-hidden="true"></span>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="name-prompt-modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="name-prompt-title">
+        <div class="modal-header">
+          <h2 id="name-prompt-title">Enter Your Name</h2>
+          <button class="ghost modal-close" type="button" id="name-prompt-close" aria-label="Close">
+            Close
           </button>
         </div>
-      </article>
-      <button class="queue-insert" type="button" data-open-search>
-        Add your song here
-      </button>
-    </template>
+        <form id="name-prompt-form" class="modal-form">
+          <label class="field">
+            <span>Your Name</span>
+            <input id="guest-name-input" type="text" placeholder="Enter your name" required maxlength="50"
+              autocomplete="off" />
+          </label>
+          <p class="hint">This will be shown when you add songs to the queue.</p>
+          <p class="error" id="name-prompt-error" role="alert"></p>
+          <div class="modal-actions">
+            <button class="primary" type="submit">Save Name</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
 
-    <template id="search-card">
-      <article class="queue-card">
-        <div class="cover">
-          <img alt="" />
-        </div>
-        <div class="queue-body">
-          <p class="meta"></p>
-          <h3></h3>
-          <p class="artist"></p>
-        </div>
-        <button class="ghost" type="button">Place</button>
-      </article>
-    </template>
+  <template id="home-now-card">
+    <article class="queue-card no-action">
+      <span class="activity" aria-hidden="true"></span>
+      <div class="cover">
+        <img alt="" />
+      </div>
+      <div class="queue-body">
+        <p class="meta"></p>
+        <h3></h3>
+        <p class="artist"></p>
+      </div>
+    </article>
+  </template>
 
-    <script src="js/menu.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/queue.js"></script>
-  </body>
+  <template id="queue-card">
+    <article class="queue-card">
+      <div class="cover">
+        <img alt="" />
+      </div>
+      <div class="queue-body">
+        <p class="meta"></p>
+        <h3></h3>
+        <p class="artist"></p>
+      </div>
+      <div class="queue-play">
+        <div class="queue-user-badge" aria-hidden="true">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-3.31 0-6 2.02-6 4.5V20h12v-1.5c0-2.48-2.69-4.5-6-4.5z">
+              </path>
+            </svg>
+          </span>
+          <span class="queue-user-info">
+            <span class="queue-user-name"></span>
+            <span class="queue-user-time"></span>
+          </span>
+        </div>
+        <button class="ghost queue-remove" data-action="remove" type="button" aria-label="Remove track" title="Remove">
+          <span class="icon" aria-hidden="true"></span>
+        </button>
+        <button class="ghost" data-action="play" type="button">Play</button>
+      </div>
+    </article>
+    <button class="queue-insert" type="button" data-open-search>
+      Add your song here
+    </button>
+  </template>
+
+  <template id="search-card">
+    <article class="queue-card">
+      <div class="cover">
+        <img alt="" />
+      </div>
+      <div class="queue-body">
+        <p class="meta"></p>
+        <h3></h3>
+        <p class="artist"></p>
+      </div>
+      <button class="ghost" type="button">Place</button>
+    </article>
+  </template>
+
+  <script src="js/menu.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/queue.js"></script>
+</body>
+
 </html>
-
-

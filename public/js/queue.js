@@ -296,8 +296,6 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   const artist = node.querySelector(".artist");
   const playButton = node.querySelector('[data-action="play"]');
   const removeButton = node.querySelector('[data-action="remove"]');
-  const nowActions = node.querySelector('[data-now-actions]');
-  const togglePlayButton = node.querySelector('[data-action="toggle-play"]');
   const insertButton = node.querySelector(".queue-insert");
   const userBadge = node.querySelector(".queue-user-badge");
   const userName = node.querySelector(".queue-user-name");
@@ -341,27 +339,6 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
     if (removeButton) {
       removeButton.remove();
     }
-    if (togglePlayButton) {
-      const icon = togglePlayButton.querySelector(".icon");
-      if (icon) {
-        icon.innerHTML = isPlaying
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect></svg>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>';
-      }
-      togglePlayButton.setAttribute(
-        "aria-label",
-        isPlaying ? "Pause playback" : "Resume playback"
-      );
-      togglePlayButton.addEventListener("click", async () => {
-        if (isPlaying) {
-          await pausePlayback();
-        } else {
-          await resumePlayback();
-        }
-      });
-    }
-  } else if (nowActions) {
-    nowActions.remove();
   }
 
   if (removeButton) {
@@ -902,33 +879,6 @@ async function playSingleTrack(uri, trackId) {
   }
 }
 
-async function pausePlayback() {
-  try {
-    const response = await fetch("/api/player/pause", { method: "POST" });
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Pause playback failed", response.status, text);
-      return;
-    }
-    await updateAutoplayState(false);
-  } catch (error) {
-    console.error("Pause playback error", error);
-  }
-}
-
-async function resumePlayback() {
-  try {
-    const response = await fetch("/api/player/resume", { method: "POST" });
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Resume playback failed", response.status, text);
-      return;
-    }
-    await updateAutoplayState(true);
-  } catch (error) {
-    console.error("Resume playback error", error);
-  }
-}
 async function startPlaylistPlayback() {
   if (!currentPlaylistId) {
     setQueueStatus("Select a playlist first.");
