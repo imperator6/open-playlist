@@ -2424,37 +2424,22 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Resort upcoming window by net votes if vote-sort is enabled.
-    // If the voted track is outside the window, pull it into the
-    // sort candidates so it can compete for a window slot.
+    // Resort upcoming window by net votes if vote-sort is enabled
     const VOTE_SORT_WINDOW = 10;
     let didSort = false;
     if (sharedQueue.voteSortEnabled && sharedQueue.tracks.length > 2) {
-      const first = sharedQueue.tracks[0];
-      const rest = sharedQueue.tracks.slice(1);
-      const windowSize = Math.min(VOTE_SORT_WINDOW, rest.length);
-      const votedIdx = rest.findIndex((t) => t.id === trackId);
-
-      let candidates = rest.slice(0, windowSize);
-      let tail = rest.slice(windowSize);
-
-      // Pull voted track from tail into candidates if outside window
-      if (votedIdx >= windowSize) {
-        candidates.push(tail.splice(votedIdx - windowSize, 1)[0]);
-      }
-
-      candidates.sort((a, b) => {
+      const windowEnd = Math.min(1 + VOTE_SORT_WINDOW, sharedQueue.tracks.length);
+      const window = sharedQueue.tracks.slice(1, windowEnd);
+      window.sort((a, b) => {
         const aVotes = a.votes ? (a.votes.up.length - a.votes.down.length) : 0;
         const bVotes = b.votes ? (b.votes.up.length - b.votes.down.length) : 0;
         return bVotes - aVotes;
       });
-
-      // Top windowSize stay in window; overflow (kicked-out track) goes
-      // to position right after the window
-      const windowTracks = candidates.slice(0, windowSize);
-      const overflow = candidates.slice(windowSize);
-
-      sharedQueue.tracks = [first, ...windowTracks, ...overflow, ...tail];
+      sharedQueue.tracks = [
+        sharedQueue.tracks[0],
+        ...window,
+        ...sharedQueue.tracks.slice(windowEnd)
+      ];
       didSort = true;
     }
 
