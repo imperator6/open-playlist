@@ -414,7 +414,7 @@ function parseTrack(track) {
   };
 }
 
-function createQueueCard(item, label, index, isPlaying, remainingText) {
+function createQueueCard(item, label, index, isPlaying, remainingText, nextTrackSource) {
   const node = queueCardTemplate.content.cloneNode(true);
   const card = node.querySelector(".queue-card");
   const cover = node.querySelector(".cover");
@@ -563,6 +563,12 @@ function createQueueCard(item, label, index, isPlaying, remainingText) {
   if (insertButton) {
     insertButton.dataset.index = String(index);
     insertButton.dataset.title = item.title || "";
+
+    const insertUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+    const insertRole = insertUser ? insertUser.role : "guest";
+    if (insertRole === "guest" && nextTrackSource === "user") {
+      insertButton.style.display = "none";
+    }
   }
 
   attachDragHandlers(card);
@@ -757,12 +763,14 @@ function renderPlaylist(tracks) {
     const isNowPlaying = currentPlaybackId && track.id === currentPlaybackId;
     const label = isNowPlaying ? "Now playing" : `Next ${index + 1}`;
 
+    const nextSource = tracks[index + 1] ? parseTrack(tracks[index + 1].track || tracks[index + 1])?.source : null;
     const node = createQueueCard(
       track,
       label,
       index,
       isNowPlaying && lastPlaybackIsPlaying,
-      isNowPlaying ? lastRemainingText : ""
+      isNowPlaying ? lastRemainingText : "",
+      nextSource
     );
     if (isNowPlaying && !lastPlaybackIsPlaying) {
       const card = node.querySelector(".queue-card");
