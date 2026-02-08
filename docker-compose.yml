@@ -4,6 +4,7 @@ services:
   open-playlist:
     build: .
     container_name: open-playlist
+    user: "0:0"  # Run as root on Windows to avoid permission issues with bind mounts
     ports:
       - "5173:5173"
     env_file:

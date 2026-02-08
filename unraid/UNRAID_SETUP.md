@@ -249,7 +249,28 @@ This directory contains:
    - Port 5173 already in use
    - Storage path permissions
 
-3. **Fix Port Conflicts**
+3. **Fix Storage Permission Errors**
+   
+   **Error:** `EACCES: permission denied, open '/app/storage/queue_store.json'`
+   
+   This happens when the container can't write to the mounted storage directory.
+   
+   **Solutions:**
+   
+   **Option A: Run as root (easiest)**
+   - Edit container settings
+   - In "Extra Parameters" field add: `--user 0:0`
+   - Apply and restart
+   
+   **Option B: Fix host permissions**
+   ```bash
+   # SSH to Unraid
+   chown -R 1001:1001 /mnt/user/appdata/open-playlist/storage
+   # Or make it world-writable:
+   chmod -R 777 /mnt/user/appdata/open-playlist/storage
+   ```
+
+4. **Fix Port Conflicts**
    ```bash
    # Check what's using port 5173
    netstat -tulpn | grep 5173

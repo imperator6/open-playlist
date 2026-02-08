@@ -32,8 +32,9 @@ RUN addgroup -g 1001 -S nodejs && \
 # Create storage directory with correct ownership
 RUN mkdir -p /app/storage && chown -R nodejs:nodejs /app
 
-# Switch to non-root user
-USER nodejs
+# Note: Running as root to avoid permission issues with bind mounts
+# If you want to run as non-root, ensure mounted volumes are owned by UID 1001
+# USER nodejs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

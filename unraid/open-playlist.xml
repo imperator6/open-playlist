@@ -31,7 +31,7 @@ Before using:&#xD;
   <WebUI>http://[IP]:[PORT:5173]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/imperator6/open-playlist/main/unraid-template.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/imperator6/open-playlist/main/icon.png</Icon>
-  <ExtraParams/>
+  <ExtraParams>--user 0:0</ExtraParams>
   <PostArgs/>
   <CPUset/>
   <DateInstalled></DateInstalled>
