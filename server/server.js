@@ -778,15 +778,15 @@ function ensureTrackAtFront(trackId) {
 
 async function autoPlayTick() {
   if (!sharedQueue.autoPlayEnabled) {
-    logInfo("Auto play tick skipped: disabled");
+    logDebug("Auto play tick skipped: disabled");
     return;
   }
   if (!sharedQueue.activePlaylistId) {
-    logInfo("Auto play tick skipped: no active playlist");
+    logDebug("Auto play tick skipped: no active playlist");
     return;
   }
   if (!sharedQueue.tracks.length) {
-    logInfo("Auto play tick skipped: no tracks");
+    logDebug("Auto play tick skipped: no tracks");
     return;
   }
   if (!(await ensureValidToken(sharedSession))) {
@@ -977,13 +977,13 @@ async function autoPlayTick() {
           }
         }
         ensureTrackAtFront(nextTrack.id);
-        logInfo("Auto play: next track sent to Spotify", {
+        logDebug("Auto play: next track sent to Spotify", {
           index: sharedQueue.currentIndex,
           trackId: nextTrack.id || null
         });
       }
     } else {
-      logInfo("Auto play tick skipped: track still playing");
+      logDebug("Auto play tick skipped: track still playing");
     }
   } else {
     logInfo("Auto play tick skipped: Spotify track differs from server index", {
@@ -2531,6 +2531,13 @@ const server = http.createServer(async (req, res) => {
     const isAdmin = session.role === "admin";
     const voter = { sessionId: session.sessionId, name: session.name || "" };
 
+    logInfo("Vote received", {
+      trackId,
+      direction,
+      sessionId: session.sessionId,
+      role: session.role
+    });
+
     if (isAdmin) {
       track.votes[direction].push(voter);
     } else {
@@ -2572,6 +2579,14 @@ const server = http.createServer(async (req, res) => {
       didSort = voted.length > 0;
     }
 
+    if (didSort) {
+      logInfo("Queue resorted after vote", {
+        trackId,
+        voteSortEnabled: sharedQueue.voteSortEnabled,
+        trackCount: sharedQueue.tracks.length
+      });
+    }
+
     sharedQueue.updatedAt = new Date().toISOString();
     sharedQueue.lastActivityId += 1;
     sharedQueue.lastActivity = {
@@ -2597,6 +2612,12 @@ const server = http.createServer(async (req, res) => {
       upCount: track.votes.up.length,
       downCount: track.votes.down.length,
       didSort
+    });
+
+    logDebug("Vote response sent", {
+      trackId,
+      status: 200,
+      sorted: didSort
     });
 
     return sendJson(res, 200, {

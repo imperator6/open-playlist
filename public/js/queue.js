@@ -1077,6 +1077,8 @@ async function submitVote(trackId, direction) {
     // Snapshot current positions before vote for FLIP animation
     const oldPositions = voteSortEnabled ? snapshotCardPositions() : null;
 
+    console.info("Sending vote", { trackId, direction });
+
     const response = await fetch("/api/queue/vote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
