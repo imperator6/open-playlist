@@ -58,6 +58,7 @@ const sharedQueue = {
   activeDeviceName: null,
   voteSortEnabled: false,
   minAddPosition: 5,
+  earlyStartMs: 1000,
   lastActivity: null,
   lastActivityId: 0
 };
@@ -276,6 +277,10 @@ function readQueueStore() {
       Number.isInteger(data.minAddPosition) && data.minAddPosition >= 0
         ? data.minAddPosition
         : 5;
+    sharedQueue.earlyStartMs =
+      Number.isInteger(data.earlyStartMs) && data.earlyStartMs >= 0 && data.earlyStartMs <= 5000
+        ? data.earlyStartMs
+        : 1000;
     sharedQueue.lastSeenTrackId = data.lastSeenTrackId || null;
     sharedQueue.lastAdvanceAt = data.lastAdvanceAt || null;
     sharedQueue.lastError = data.lastError || null;
@@ -311,6 +316,7 @@ function persistQueueStore() {
       autoPlayEnabled: sharedQueue.autoPlayEnabled,
       voteSortEnabled: sharedQueue.voteSortEnabled,
       minAddPosition: sharedQueue.minAddPosition,
+      earlyStartMs: sharedQueue.earlyStartMs,
       lastSeenTrackId: sharedQueue.lastSeenTrackId,
       lastAdvanceAt: sharedQueue.lastAdvanceAt,
       lastError: sharedQueue.lastError,
@@ -718,6 +724,7 @@ function buildQueuePayload() {
     autoPlayEnabled: sharedQueue.autoPlayEnabled,
     voteSortEnabled: sharedQueue.voteSortEnabled,
     minAddPosition: sharedQueue.minAddPosition,
+    earlyStartMs: sharedQueue.earlyStartMs,
     lastError: sharedQueue.lastError,
     activeDeviceId: sharedQueue.activeDeviceId,
     activeDeviceName: sharedQueue.activeDeviceName,
@@ -764,8 +771,56 @@ function notifyUnifiedSubscribers() {
   });
 }
 
+let earlyStartTimer = null;
+
+function scheduleEarlyStart() {
+  clearTimeout(earlyStartTimer);
+  earlyStartTimer = null;
+
+  if (!sharedQueue.autoPlayEnabled) return;
+  if (!sharedQueue.earlyStartMs || sharedQueue.earlyStartMs <= 0) return;
+
+  const playback = sharedPlaybackCache.playback;
+  if (!playback || !playback.is_playing || !playback.item) return;
+
+  const duration = playback.item.duration_ms;
+  if (!duration) return;
+
+  const progress = typeof playback.progress_ms === "number" ? playback.progress_ms : 0;
+  const remaining = duration - progress;
+
+  if (remaining <= sharedQueue.earlyStartMs) {
+    return;
+  }
+
+  const fireIn = remaining - sharedQueue.earlyStartMs;
+  const firesAt = new Date(Date.now() + fireIn).toISOString();
+  const trackTitle = playback.item.name || null;
+  const trackId = playback.item.id || null;
+  const fireInSec = Math.round(fireIn / 1000);
+  const triggersIn = `${String(Math.floor(fireInSec / 60)).padStart(2, "0")}:${String(fireInSec % 60).padStart(2, "0")}`;
+  logInfo("Early start timer scheduled", {
+    trackId,
+    title: trackTitle,
+    triggersIn,
+    firesAt
+  });
+
+  earlyStartTimer = setTimeout(() => {
+    earlyStartTimer = null;
+    logInfo("Early start timer fired, advancing to next track", {
+      trackId,
+      title: trackTitle
+    });
+    advanceQueue("early-start").catch((err) => {
+      logWarn("Early start advance failed", null, err);
+    });
+  }, fireIn);
+}
+
 function notifyPlaybackSubscribers() {
   notifyUnifiedSubscribers();
+  scheduleEarlyStart();
 }
 
 function notifyDeviceSubscribers() {
@@ -854,6 +909,64 @@ function ensureTrackAtFront(trackId) {
   });
 }
 
+async function advanceQueue(reason) {
+  const now = Date.now();
+  if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
+    logInfo("Auto play: debounce active", {
+      reason,
+      currentIndex: sharedQueue.currentIndex,
+      msSinceLastAdvance: now - sharedQueue.lastAdvanceAt
+    });
+    return;
+  }
+
+  const nextIndex = sharedQueue.currentIndex + 1;
+  if (nextIndex >= sharedQueue.tracks.length) {
+    logInfo("Auto play reached end of list", {
+      reason,
+      trackCount: sharedQueue.tracks.length
+    });
+    return;
+  }
+
+  const nextTrack = getServerTrack(nextIndex);
+  if (!nextTrack) return;
+
+  logInfo("Auto play: advancing to next track", {
+    reason,
+    fromIndex: sharedQueue.currentIndex,
+    toIndex: nextIndex,
+    trackId: nextTrack.id || null,
+    title: nextTrack.title || null
+  });
+
+  const started = await playTrackUri(nextTrack.uri, sharedQueue.activeDeviceId);
+  if (started) {
+    const previousIndex = sharedQueue.currentIndex;
+    sharedQueue.currentIndex = nextIndex;
+    sharedQueue.lastSeenTrackId = nextTrack.id || null;
+    sharedQueue.lastAdvanceAt = now;
+    if (
+      Number.isInteger(previousIndex) &&
+      previousIndex >= 0 &&
+      previousIndex < sharedQueue.tracks.length
+    ) {
+      sharedQueue.tracks.splice(previousIndex, 1);
+      if (sharedQueue.currentIndex > previousIndex) {
+        sharedQueue.currentIndex -= 1;
+      }
+    }
+    ensureTrackAtFront(nextTrack.id);
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+    logInfo("Auto play: next track sent to Spotify", {
+      reason,
+      index: sharedQueue.currentIndex,
+      trackId: nextTrack.id || null
+    });
+  }
+}
+
 async function autoPlayTick() {
   if (!sharedQueue.autoPlayEnabled) {
     logDebug("Auto play tick skipped: disabled");
@@ -922,58 +1035,7 @@ async function autoPlayTick() {
       return;
     }
 
-    if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
-      logInfo("Auto play: debounce active", {
-        currentIndex: sharedQueue.currentIndex,
-        msSinceLastAdvance: now - sharedQueue.lastAdvanceAt
-      });
-      return;
-    }
-
-    const nextIndex = sharedQueue.currentIndex + 1;
-    if (nextIndex >= sharedQueue.tracks.length) {
-      logInfo("Auto play reached end of list", {
-        trackCount: sharedQueue.tracks.length
-      });
-      return;
-    }
-
-    const nextTrack = getServerTrack(nextIndex);
-    if (!nextTrack) return;
-
-    logInfo("Auto play: advancing to next track", {
-      fromIndex: sharedQueue.currentIndex,
-      toIndex: nextIndex,
-      trackId: nextTrack.id || null,
-      title: nextTrack.title || null
-    });
-    const started = await playTrackUri(
-      nextTrack.uri,
-      sharedQueue.activeDeviceId
-    );
-    if (started) {
-      const previousIndex = sharedQueue.currentIndex;
-      sharedQueue.currentIndex = nextIndex;
-      sharedQueue.lastSeenTrackId = nextTrack.id || null;
-      sharedQueue.lastAdvanceAt = now;
-      if (
-        Number.isInteger(previousIndex) &&
-        previousIndex >= 0 &&
-        previousIndex < sharedQueue.tracks.length
-      ) {
-        sharedQueue.tracks.splice(previousIndex, 1);
-        if (sharedQueue.currentIndex > previousIndex) {
-          sharedQueue.currentIndex -= 1;
-        }
-      }
-      ensureTrackAtFront(nextTrack.id);
-      sharedQueue.updatedAt = new Date().toISOString();
-      persistQueueStore();
-      logInfo("Auto play: next track sent to Spotify", {
-        index: sharedQueue.currentIndex,
-        trackId: nextTrack.id || null
-      });
-    }
+    await advanceQueue("no-playback");
     return;
   }
 
@@ -1009,57 +1071,7 @@ async function autoPlayTick() {
     }
 
     if (!playback.is_playing) {
-      const now = Date.now();
-      if (sharedQueue.lastAdvanceAt && now - sharedQueue.lastAdvanceAt < 6000) {
-        logInfo("Auto play: debounce active", {
-          currentIndex: sharedQueue.currentIndex,
-          msSinceLastAdvance: now - sharedQueue.lastAdvanceAt
-        });
-        return;
-      }
-
-      const nextIndex = sharedQueue.currentIndex + 1;
-      if (nextIndex >= sharedQueue.tracks.length) {
-        logInfo("Auto play reached end of list", {
-          trackCount: sharedQueue.tracks.length
-        });
-        return;
-      }
-
-      const nextTrack = getServerTrack(nextIndex);
-      if (!nextTrack) return;
-
-      logInfo("Auto play: advancing to next track (paused)", {
-        fromIndex: sharedQueue.currentIndex,
-        toIndex: nextIndex,
-        trackId: nextTrack.id || null,
-        title: nextTrack.title || null
-      });
-      const started = await playTrackUri(
-        nextTrack.uri,
-        sharedQueue.activeDeviceId
-      );
-      if (started) {
-        const previousIndex = sharedQueue.currentIndex;
-        sharedQueue.currentIndex = nextIndex;
-        sharedQueue.lastSeenTrackId = nextTrack.id || null;
-        sharedQueue.lastAdvanceAt = now;
-        if (
-          Number.isInteger(previousIndex) &&
-          previousIndex >= 0 &&
-          previousIndex < sharedQueue.tracks.length
-        ) {
-          sharedQueue.tracks.splice(previousIndex, 1);
-          if (sharedQueue.currentIndex > previousIndex) {
-            sharedQueue.currentIndex -= 1;
-          }
-        }
-        ensureTrackAtFront(nextTrack.id);
-        logDebug("Auto play: next track sent to Spotify", {
-          index: sharedQueue.currentIndex,
-          trackId: nextTrack.id || null
-        });
-      }
+      await advanceQueue("track-ended");
     } else {
       logDebug("Auto play tick skipped: track still playing");
     }
@@ -2172,7 +2184,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET") {
       return sendJson(res, 200, {
         minAddPosition: sharedQueue.minAddPosition,
-        voteSortEnabled: sharedQueue.voteSortEnabled
+        voteSortEnabled: sharedQueue.voteSortEnabled,
+        earlyStartMs: sharedQueue.earlyStartMs
       });
     }
 
@@ -2194,16 +2207,32 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    if (
+      !Number.isInteger(body.earlyStartMs) ||
+      body.earlyStartMs < 0 ||
+      body.earlyStartMs > 5000
+    ) {
+      return sendJson(res, 400, {
+        error: "earlyStartMs must be an integer between 0 and 5000"
+      });
+    }
+
     sharedQueue.minAddPosition = body.minAddPosition;
+    sharedQueue.earlyStartMs = body.earlyStartMs;
     sharedQueue.updatedAt = new Date().toISOString();
     persistQueueStore();
     notifyQueueSubscribers();
+    scheduleEarlyStart();
 
-    logInfo("Admin settings updated", { minAddPosition: sharedQueue.minAddPosition });
+    logInfo("Admin settings updated", {
+      minAddPosition: sharedQueue.minAddPosition,
+      earlyStartMs: sharedQueue.earlyStartMs
+    });
 
     return sendJson(res, 200, {
       ok: true,
-      minAddPosition: sharedQueue.minAddPosition
+      minAddPosition: sharedQueue.minAddPosition,
+      earlyStartMs: sharedQueue.earlyStartMs
     });
   }
 

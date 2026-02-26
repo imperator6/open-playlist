@@ -5,6 +5,7 @@ const adminSettingsFormWrap = document.getElementById("admin-settings-form-wrap"
 const adminAccessDenied = document.getElementById("admin-access-denied");
 const adminSettingsForm = document.getElementById("admin-settings-form");
 const minAddPositionInput = document.getElementById("min-add-position-input");
+const earlyStartInput = document.getElementById("early-start-input");
 const adminSaveBtn = document.getElementById("admin-save-btn");
 const voteSortToggle = document.getElementById("admin-votesort-toggle");
 const voteSortStatus = document.getElementById("votesort-status");
@@ -29,6 +30,9 @@ async function loadSettings() {
     const data = await res.json();
     if (minAddPositionInput && Number.isInteger(data.minAddPosition)) {
       minAddPositionInput.value = String(data.minAddPosition);
+    }
+    if (earlyStartInput && Number.isInteger(data.earlyStartMs)) {
+      earlyStartInput.value = (data.earlyStartMs / 1000).toFixed(1);
     }
     if (voteSortToggle) {
       voteSortToggle.checked = Boolean(data.voteSortEnabled);
@@ -73,9 +77,15 @@ function showAccessDenied() {
 if (adminSettingsForm) {
   adminSettingsForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const value = parseInt(minAddPositionInput.value, 10);
-    if (!Number.isInteger(value) || value < 0 || value > 100) {
-      setStatus("Enter a number between 0 and 100.");
+    const minAddPosition = parseInt(minAddPositionInput.value, 10);
+    if (!Number.isInteger(minAddPosition) || minAddPosition < 0 || minAddPosition > 100) {
+      setStatus("Minimum insert position must be a number between 0 and 100.");
+      return;
+    }
+    const earlyStartSec = parseFloat(earlyStartInput ? earlyStartInput.value : "1");
+    const earlyStartMs = Math.round(earlyStartSec * 1000);
+    if (!Number.isFinite(earlyStartMs) || earlyStartMs < 0 || earlyStartMs > 5000) {
+      setStatus("Early start offset must be between 0 and 5 seconds.");
       return;
     }
     setStatus("Saving...", true);
@@ -83,7 +93,7 @@ if (adminSettingsForm) {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ minAddPosition: value })
+        body: JSON.stringify({ minAddPosition, earlyStartMs })
       });
       if (res.status === 403) {
         setStatus("Insufficient permissions.");
@@ -97,6 +107,9 @@ if (adminSettingsForm) {
       const data = await res.json();
       if (minAddPositionInput && Number.isInteger(data.minAddPosition)) {
         minAddPositionInput.value = String(data.minAddPosition);
+      }
+      if (earlyStartInput && Number.isInteger(data.earlyStartMs)) {
+        earlyStartInput.value = (data.earlyStartMs / 1000).toFixed(1);
       }
       setStatus("Settings saved.");
     } catch (err) {

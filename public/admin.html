@@ -102,7 +102,7 @@
             </label>
           </div>
           <div class="panel">
-            <h2>Song insertion limit</h2>
+            <h2>Playback &amp; queue</h2>
             <p class="status" id="admin-status"></p>
             <form id="admin-settings-form">
               <label class="field">
@@ -119,6 +119,21 @@
               </label>
               <p class="hint" id="min-add-position-hint">
                 Guests can only add songs after this position in the queue. Set to 0 to allow adding anywhere.
+              </p>
+              <label class="field">
+                <span>Early start offset (seconds)</span>
+                <input
+                  id="early-start-input"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  required
+                  aria-describedby="early-start-hint"
+                />
+              </label>
+              <p class="hint" id="early-start-hint">
+                How many seconds before a track ends to start the next one. Set to 0 to disable early start.
               </p>
               <div class="actions">
                 <button class="primary" type="submit" id="admin-save-btn">Save</button>
