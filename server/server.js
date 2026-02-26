@@ -57,6 +57,7 @@ const sharedQueue = {
   activeDeviceId: null,
   activeDeviceName: null,
   voteSortEnabled: false,
+  minAddPosition: 5,
   lastActivity: null,
   lastActivityId: 0
 };
@@ -241,6 +242,10 @@ function readQueueStore() {
     sharedQueue.voteSortEnabled = typeof data.voteSortEnabled === "boolean"
       ? data.voteSortEnabled
       : false;
+    sharedQueue.minAddPosition =
+      Number.isInteger(data.minAddPosition) && data.minAddPosition >= 0
+        ? data.minAddPosition
+        : 5;
     sharedQueue.lastSeenTrackId = data.lastSeenTrackId || null;
     sharedQueue.lastAdvanceAt = data.lastAdvanceAt || null;
     sharedQueue.lastError = data.lastError || null;
@@ -275,6 +280,7 @@ function persistQueueStore() {
       currentIndex: sharedQueue.currentIndex,
       autoPlayEnabled: sharedQueue.autoPlayEnabled,
       voteSortEnabled: sharedQueue.voteSortEnabled,
+      minAddPosition: sharedQueue.minAddPosition,
       lastSeenTrackId: sharedQueue.lastSeenTrackId,
       lastAdvanceAt: sharedQueue.lastAdvanceAt,
       lastError: sharedQueue.lastError,
@@ -681,6 +687,7 @@ function buildQueuePayload() {
     currentIndex: sharedQueue.currentIndex,
     autoPlayEnabled: sharedQueue.autoPlayEnabled,
     voteSortEnabled: sharedQueue.voteSortEnabled,
+    minAddPosition: sharedQueue.minAddPosition,
     lastError: sharedQueue.lastError,
     activeDeviceId: sharedQueue.activeDeviceId,
     activeDeviceName: sharedQueue.activeDeviceName,
@@ -1055,6 +1062,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/playlist" || pathname === "/playlist.html") {
     return readStaticFile(path.join(__dirname, "..", "public", "playlist.html"), res);
   }
+  if (pathname === "/admin" || pathname === "/admin.html") {
+    return readStaticFile(path.join(__dirname, "..", "public", "admin.html"), res);
+  }
   if (pathname === "/css/styles.css") {
     return readStaticFile(path.join(__dirname, "..", "public", "css", "styles.css"), res);
   }
@@ -1084,6 +1094,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === "/js/pwa.js") {
     return readStaticFile(path.join(__dirname, "..", "public", "js", "pwa.js"), res);
+  }
+  if (pathname === "/js/admin.js") {
+    return readStaticFile(path.join(__dirname, "..", "public", "js", "admin.js"), res);
   }
   if (pathname === "/sw.js") {
     return readStaticFile(path.join(__dirname, "..", "public", "sw.js"), res);
@@ -1977,6 +1990,7 @@ const server = http.createServer(async (req, res) => {
       currentIndex: sharedQueue.currentIndex,
       autoPlayEnabled: sharedQueue.autoPlayEnabled,
       voteSortEnabled: sharedQueue.voteSortEnabled,
+      minAddPosition: sharedQueue.minAddPosition,
       lastError: sharedQueue.lastError,
       activeDeviceId: sharedQueue.activeDeviceId,
       activeDeviceName: sharedQueue.activeDeviceName
@@ -2105,6 +2119,48 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, {
       ok: true,
       voteSortEnabled: sharedQueue.voteSortEnabled
+    });
+  }
+
+  if (pathname === "/api/admin/settings") {
+    if (!requirePermission(req, res, "admin:settings")) {
+      return;
+    }
+
+    if (req.method === "GET") {
+      return sendJson(res, 200, {
+        minAddPosition: sharedQueue.minAddPosition
+      });
+    }
+
+    let body = {};
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      logWarn("Invalid admin settings payload", null, err);
+      return sendJson(res, 400, { error: "Invalid JSON payload" });
+    }
+
+    if (
+      !Number.isInteger(body.minAddPosition) ||
+      body.minAddPosition < 0 ||
+      body.minAddPosition > 100
+    ) {
+      return sendJson(res, 400, {
+        error: "minAddPosition must be an integer between 0 and 100"
+      });
+    }
+
+    sharedQueue.minAddPosition = body.minAddPosition;
+    sharedQueue.updatedAt = new Date().toISOString();
+    persistQueueStore();
+    notifyQueueSubscribers();
+
+    logInfo("Admin settings updated", { minAddPosition: sharedQueue.minAddPosition });
+
+    return sendJson(res, 200, {
+      ok: true,
+      minAddPosition: sharedQueue.minAddPosition
     });
   }
 
@@ -2349,9 +2405,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     const track = body.track || null;
-    const position =
+    const minPos = Math.min(sharedQueue.minAddPosition, sharedQueue.tracks.length);
+    const rawPosition =
       Number.isInteger(body.position) && body.position >= 0
         ? body.position
+        : null;
+    const position =
+      rawPosition !== null
+        ? Math.max(rawPosition, minPos)
         : null;
 
     if (!track || !track.uri) {

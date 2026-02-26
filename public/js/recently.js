@@ -82,7 +82,11 @@ async function addRecentToQueue(entry) {
     if (queueRes.ok) {
       const queueData = await queueRes.json();
       if (Number.isInteger(queueData.currentIndex)) {
-        insertPosition = queueData.currentIndex + 1;
+        const serverMinPos = Number.isInteger(queueData.minAddPosition)
+          ? queueData.minAddPosition
+          : 5;
+        const minPos = Math.min(serverMinPos, (queueData.tracks || []).length);
+        insertPosition = Math.max(queueData.currentIndex + 1, minPos);
       }
     }
   } catch (error) {

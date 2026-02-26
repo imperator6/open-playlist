@@ -37,7 +37,7 @@ open-playlist/
 - `index.html`: Home + full playback controls (play/pause, progress, remaining, autoplay, device) plus the waiting list queue section appended at the end of the page.
 - Home displays queue count pulled from the playback stream, shows a red "Load Songs from a Playlist" button when empty, and offers a clear-queue action when populated.
 - Home includes a manual device refresh button that forces a Spotify device refresh and broadcasts updates to all clients.
-- The waiting list section on Home lets users reorder, add/remove tracks, place search results, and control playback per item.
+- The waiting list section on Home lets users reorder, add/remove tracks, place search results, and control playback per item. Tracks can only be added after a configurable minimum position (default: 5); both client UI and server enforce this. Admins can change the value via the Admin Settings page (`/admin`).
 - When no playback is active, Home shows a "Start playback" button that enables autoplay (disabled if the queue is empty).
 - Queue tracks include a `source` field: `playlist` when loaded from the waiting-list playlist and `user` when added by users (search or recently played). User-sourced tracks are visually highlighted in the queue list.
 - User-sourced queue items render an extra row with a user icon, the name "Tino", and a placeholder time string for future updates.
@@ -48,6 +48,7 @@ open-playlist/
 - When loading a new playlist, the currently playing track from the old queue is preserved at position 0 (duplicates removed from the new list). This ensures uninterrupted playback during playlist switches.
 - `recently.html`: View recently played tracks and add one as next in the queue.
 - `session.html`: Connect/disconnect Spotify and view session details.
+- `admin.html`: Admin-only settings page. Currently exposes `minAddPosition` (minimum queue slot users can insert into).
 
 ## Key Client Flows
 - Clients only call local server endpoints (`/api/...`). No direct Spotify Web API calls.
@@ -67,6 +68,7 @@ open-playlist/
 - Spotify data (server-side): `/api/playlists`, `/api/playlists/search`, `/api/recently-played`, `/api/track-search`
 - Playback control: `/api/playlists/:id/play`, `/api/track-play`, `/api/player/pause`, `/api/player/resume`, `/api/player/devices`, `/api/player/devices/refresh`, `/api/player/transfer`
 - Waiting list queue: `/api/queue`, `/api/queue/playlist`, `/api/queue/playlist/load`, `/api/queue/playlist/select`, `/api/queue/playlist/add`, `/api/queue/playlist/remove`, `/api/queue/playlist/reorder`, `/api/queue/vote`, `/api/queue/votesort`
+- Admin settings (admin-only): `/api/admin/settings` (GET/POST) — currently manages `minAddPosition`
 - Unified long-poll stream: `/api/stream/all` (playback, devices, playlist payloads)
 
 ## Caching & Polling

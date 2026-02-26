@@ -43,6 +43,7 @@ let isReordering = false;
 let currentPlaybackId = null;
 let autoPlayEnabled = true;
 let voteSortEnabled = false;
+let minAddPosition = 5;
 let lastPlaybackIsPlaying = false;
 let remainingTimerId = null;
 let remainingState = null;
@@ -784,10 +785,14 @@ function createQueueCard(item, label, index, isPlaying, remainingText, nextTrack
     insertButton.dataset.index = String(index);
     insertButton.dataset.title = item.title || "";
 
-    const insertUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
-    const insertRole = insertUser ? insertUser.role : "guest";
-    if (insertRole === "guest" && nextTrackSource === "user") {
+    if (index < minAddPosition - 1) {
       insertButton.style.display = "none";
+    } else {
+      const insertUser = window.authAPI ? window.authAPI.getCurrentUser() : null;
+      const insertRole = insertUser ? insertUser.role : "guest";
+      if (insertRole === "guest" && nextTrackSource === "user") {
+        insertButton.style.display = "none";
+      }
     }
   }
 
@@ -1266,6 +1271,9 @@ async function fetchPlaylistTracks() {
     renderAutoplayState(autoPlayEnabled);
     voteSortEnabled = Boolean(data.voteSortEnabled);
     renderVoteSortState(voteSortEnabled);
+    if (Number.isInteger(data.minAddPosition)) {
+      minAddPosition = data.minAddPosition;
+    }
     selectedDeviceId = data.activeDeviceId || null;
     if (data.lastError && data.lastError.message) {
       setQueueError(`Auto-play error: ${data.lastError.message}`);
@@ -1301,6 +1309,9 @@ function applyPlaylistPayload(data) {
   renderAutoplayState(autoPlayEnabled);
   voteSortEnabled = Boolean(data.voteSortEnabled);
   renderVoteSortState(voteSortEnabled);
+  if (Number.isInteger(data.minAddPosition)) {
+    minAddPosition = data.minAddPosition;
+  }
   selectedDeviceId = data.activeDeviceId || null;
   if (data.lastError && data.lastError.message) {
     setQueueError(`Auto-play error: ${data.lastError.message}`);
@@ -1393,9 +1404,10 @@ async function addTrackToPlaylist(track, position) {
     }
   }
 
+  const minPos = Math.min(minAddPosition, playlistTracks.length);
   const effectivePosition =
     typeof position === "number" && position >= 0
-      ? Math.min(position, playlistTracks.length)
+      ? Math.max(Math.min(position, playlistTracks.length), minPos)
       : playlistTracks.length;
   try {
     setQueueStatus("Adding track...", true);

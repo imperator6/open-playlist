@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Recently Played</title>
+    <title>Admin Settings</title>
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
@@ -39,7 +39,7 @@
           </span>
           <span class="menu-label">Playlist</span>
         </a>
-        <a href="recently.html" class="active">
+        <a href="recently.html">
           <span class="menu-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.32 4.8a1 1 0 1 1 1.86.74A6 6 0 1 0 12 6a1 1 0 1 1 0-2zm-1 3a1 1 0 0 1 1 1v4.2l3 1.7a1 1 0 1 1-1 1.74l-3.5-2A1 1 0 0 1 11 12V8a1 1 0 0 1 1-1z"/></svg>
           </span>
@@ -51,7 +51,7 @@
           </span>
           <span class="menu-label">Session</span>
         </a>
-        <a href="admin.html" data-role-required="admin">
+        <a href="admin.html" class="active" data-role-required="admin">
           <span class="menu-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.05 7.05 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54a7.1 7.1 0 0 0-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.36 1.04.67 1.62.94l.36 2.54c.06.26.29.41.47.41h3.84c.26 0 .48-.18.48-.41l.36-2.54a7.1 7.1 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 0 1 8.4 12A3.6 3.6 0 0 1 12 8.4A3.6 3.6 0 0 1 15.6 12A3.6 3.6 0 0 1 12 15.6z"/></svg>
           </span>
@@ -74,57 +74,48 @@
       <header class="queue-hero">
         <div class="hero-header-content">
           <div>
-            <p class="eyebrow">Recently Played</p>
-            <h1>Tracks you just listened to</h1>
+            <p class="eyebrow">Admin Settings</p>
+            <h1>Queue configuration</h1>
             <p class="lede">
-              Pull the latest listening history from Spotify and refresh anytime.
+              Configure how guests can interact with the waiting list.
             </p>
-          </div>
-        </div>
-        <div class="panel">
-          <h2>Refresh</h2>
-          <p class="status" id="recent-status">Checking connection...</p>
-          <p class="hint" id="recent-hint">
-            Connect on the Session page to view history.
-          </p>
-          <div class="actions">
-            <button class="primary" id="recent-refresh-btn" type="button">
-              Refresh list
-            </button>
           </div>
         </div>
       </header>
 
       <section class="queue-section">
-        <div class="recent-list" id="recent-list"></div>
+        <div id="admin-access-denied" style="display: none">
+          <p class="subtle">You must be logged in as admin to view this page.</p>
+        </div>
+
+        <div id="admin-settings-form-wrap">
+          <div class="panel">
+            <h2>Song insertion limit</h2>
+            <p class="status" id="admin-status"></p>
+            <form id="admin-settings-form">
+              <label class="field">
+                <span>Minimum insert position</span>
+                <input
+                  id="min-add-position-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  required
+                  aria-describedby="min-add-position-hint"
+                />
+              </label>
+              <p class="hint" id="min-add-position-hint">
+                Guests can only add songs after this position in the queue. Set to 0 to allow adding anywhere.
+              </p>
+              <div class="actions">
+                <button class="primary" type="submit" id="admin-save-btn">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </section>
     </main>
-
-    <template id="recent-card">
-      <article class="queue-card recent-card">
-        <div class="cover">
-          <img alt="" />
-        </div>
-        <div class="queue-body">
-          <p class="meta"></p>
-          <h3></h3>
-          <p class="artist"></p>
-        </div>
-        <div class="queue-play">
-          <p class="recent-time"></p>
-        </div>
-        <div class="queue-actions">
-          <button
-            class="ghost recent-add"
-            type="button"
-            aria-label="Play next"
-            title="Play next"
-          >
-            Play next
-          </button>
-        </div>
-      </article>
-    </template>
 
     <div class="modal" id="admin-login-modal" aria-hidden="true">
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
@@ -194,12 +185,6 @@
 
     <script src="js/menu.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/recently.js"></script>
+    <script src="js/admin.js"></script>
   </body>
 </html>
-
-
-
-
-
-
