@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const nodeFetch = require("node-fetch");
+const QRCode = require("qrcode");
 const { hasPermission, getPermissionsForRole } = require("./permissions");
 const auth = require("./auth");
 
@@ -1110,6 +1111,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/admin" || pathname === "/admin.html") {
     return readStaticFile(path.join(__dirname, "..", "public", "admin.html"), res);
   }
+  if (pathname === "/qr" || pathname === "/qr.html") {
+    return readStaticFile(path.join(__dirname, "..", "public", "qr.html"), res);
+  }
   if (pathname === "/css/styles.css") {
     return readStaticFile(path.join(__dirname, "..", "public", "css", "styles.css"), res);
   }
@@ -1143,6 +1147,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/js/admin.js") {
     return readStaticFile(path.join(__dirname, "..", "public", "js", "admin.js"), res);
   }
+  if (pathname === "/js/qr.js") {
+    return readStaticFile(path.join(__dirname, "..", "public", "js", "qr.js"), res);
+  }
   if (pathname === "/sw.js") {
     return readStaticFile(path.join(__dirname, "..", "public", "sw.js"), res);
   }
@@ -1163,6 +1170,25 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === "/icons/apple-touch-icon.png") {
     return readStaticFile(path.join(__dirname, "..", "public", "icons", "apple-touch-icon.png"), res);
+  }
+
+  if (pathname === "/api/app-url") {
+    const appUrl = REDIRECT_URI.replace(/\/callback$/, "");
+    return sendJson(res, 200, { url: appUrl });
+  }
+
+  if (pathname === "/api/qr.svg") {
+    const appUrl = REDIRECT_URI.replace(/\/callback$/, "");
+    try {
+      const svg = await QRCode.toString(appUrl, { type: "svg", margin: 1 });
+      res.writeHead(200, { "Content-Type": "image/svg+xml" });
+      res.end(svg);
+    } catch (err) {
+      logError("QR code generation failed", { url: appUrl }, err);
+      res.writeHead(500);
+      res.end("QR generation error");
+    }
+    return;
   }
 
   if (pathname === "/status") {

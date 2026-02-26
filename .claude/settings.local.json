@@ -6,7 +6,8 @@
       "Bash(timeout 5 npm start:*)",
       "Bash(node --version:*)",
       "Bash(node -c:*)",
-      "WebFetch(domain:127.0.0.1)"
+      "WebFetch(domain:127.0.0.1)",
+      "Bash(npm install qrcode)"
     ]
   }
 }
