@@ -301,6 +301,9 @@ function startHomeUnifiedLongPoll() {
       }
       renderHomeDevices(devices, preferred);
     }
+    if (data.activeSessions) {
+      updateSessionCounter(data.activeSessions);
+    }
   });
   window.streamLeader.start();
 }
@@ -583,3 +586,88 @@ if (homeProgressBar) {
     }
   });
 }
+
+// --- Session Counter ---
+
+const sessionCounterBtn = document.getElementById("session-counter-btn");
+const sessionCounterCountEl = document.getElementById("session-counter-count");
+const sessionPopup = document.getElementById("session-popup");
+const sessionPopupList = document.getElementById("session-popup-list");
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatSessionAge(isoString) {
+  if (!isoString) return "";
+  const diffMs = Date.now() - Date.parse(isoString);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes === 1) return "1m ago";
+  return `${minutes}m ago`;
+}
+
+function updateSessionCounter(activeSessions) {
+  if (!activeSessions) return;
+  const sessions = Array.isArray(activeSessions.sessions) ? activeSessions.sessions : [];
+  if (sessionCounterCountEl) {
+    sessionCounterCountEl.textContent = sessions.length;
+  }
+  if (!sessionPopupList) return;
+  if (sessions.length === 0) {
+    sessionPopupList.innerHTML = '<li class="session-popup-empty">No active users</li>';
+    return;
+  }
+  sessionPopupList.innerHTML = sessions.map((s) => {
+    const name = s.name || "Guest";
+    const role = s.role || "guest";
+    const time = formatSessionAge(s.lastActivityAt);
+    const roleTag = role !== "guest"
+      ? `<span class="session-popup-role">${escapeHtml(role)}</span>`
+      : "";
+    return `<li class="session-popup-item">
+      <span class="session-popup-dot"></span>
+      <span class="session-popup-name">${escapeHtml(name)}</span>
+      ${roleTag}
+      <span class="session-popup-time">${escapeHtml(time)}</span>
+    </li>`;
+  }).join("");
+}
+
+function toggleSessionPopup(open) {
+  if (!sessionPopup || !sessionCounterBtn) return;
+  const isOpen = open !== undefined ? open : !sessionPopup.classList.contains("is-open");
+  sessionPopup.classList.toggle("is-open", isOpen);
+  sessionPopup.setAttribute("aria-hidden", String(!isOpen));
+  sessionCounterBtn.setAttribute("aria-expanded", String(isOpen));
+}
+
+if (sessionCounterBtn) {
+  sessionCounterBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleSessionPopup();
+  });
+  document.addEventListener("click", (e) => {
+    if (sessionPopup && !sessionPopup.contains(e.target) && e.target !== sessionCounterBtn) {
+      toggleSessionPopup(false);
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") toggleSessionPopup(false);
+  });
+}
+
+async function pingSession() {
+  try {
+    await fetch("/api/session/ping", { method: "POST" });
+  } catch (_) {
+    // non-critical
+  }
+}
+
+pingSession();
+setInterval(pingSession, 2 * 60 * 1000);

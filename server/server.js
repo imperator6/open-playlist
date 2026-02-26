@@ -75,6 +75,10 @@ const sharedDevicesCache = {
 const unifiedSubscribers = [];
 const SERVICE_NAME = "spotify-server";
 
+const sessionActivity = new Map(); // sessionId -> { name, role, lastActivityAt }
+let sessionsUpdatedAt = null;
+const INACTIVE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
 function writeLog(line, isError) {
   const output = `${line}\n`;
   if (isError) {
@@ -134,6 +138,32 @@ function logWarn(message, context, err) {
 
 function logError(message, context, err) {
   log("ERROR", message, context, err);
+}
+
+function updateSessionActivity(session) {
+  if (!session || !session.sessionId) return;
+  sessionActivity.set(session.sessionId, {
+    name: session.name || "",
+    role: session.role || "guest",
+    lastActivityAt: new Date().toISOString()
+  });
+  sessionsUpdatedAt = new Date().toISOString();
+}
+
+function buildActiveSessionsPayload() {
+  const now = Date.now();
+  const active = [];
+  for (const entry of sessionActivity.values()) {
+    if (now - Date.parse(entry.lastActivityAt) < INACTIVE_THRESHOLD_MS) {
+      active.push({
+        name: entry.name,
+        role: entry.role,
+        lastActivityAt: entry.lastActivityAt
+      });
+    }
+  }
+  active.sort((a, b) => Date.parse(b.lastActivityAt) - Date.parse(a.lastActivityAt));
+  return { sessions: active, updatedAt: sessionsUpdatedAt };
 }
 
 function appendActionLog(filePath, record, label) {
@@ -707,16 +737,19 @@ function buildUnifiedPayload(authOk) {
   const playback = buildPlaybackPayload();
   const devices = buildDevicePayload();
   const queue = buildQueuePayload();
+  const activeSessions = buildActiveSessionsPayload();
   return {
     updatedAt: resolveLatestTimestamp([
       playback.updatedAt,
       devices.updatedAt,
-      queue.updatedAt
+      queue.updatedAt,
+      activeSessions.updatedAt
     ]),
     authOk,
     playback,
     devices,
-    queue
+    queue,
+    activeSessions
   };
 }
 
@@ -1284,6 +1317,15 @@ const server = http.createServer(async (req, res) => {
       name: session.name,
       sessionId: session.sessionId
     });
+  }
+
+  if (pathname === "/api/session/ping" && req.method === "POST") {
+    const session = getUserSession(req);
+    updateSessionActivity(session);
+    res.setHeader("Set-Cookie", auth.createSessionCookie(session));
+    notifyUnifiedSubscribers();
+    logDebug("Session ping received", { sessionId: session.sessionId, name: session.name, role: session.role });
+    return sendJson(res, 200, { ok: true });
   }
 
   if (pathname === "/api/host/connect") {

@@ -69,7 +69,8 @@ open-playlist/
 - Playback control: `/api/playlists/:id/play`, `/api/track-play`, `/api/player/pause`, `/api/player/resume`, `/api/player/devices`, `/api/player/devices/refresh`, `/api/player/transfer`
 - Waiting list queue: `/api/queue`, `/api/queue/playlist`, `/api/queue/playlist/load`, `/api/queue/playlist/select`, `/api/queue/playlist/add`, `/api/queue/playlist/remove`, `/api/queue/playlist/reorder`, `/api/queue/vote`, `/api/queue/votesort`
 - Admin settings (admin-only): `/api/admin/settings` (GET/POST) — currently manages `minAddPosition`
-- Unified long-poll stream: `/api/stream/all` (playback, devices, playlist payloads)
+- Unified long-poll stream: `/api/stream/all` (playback, devices, playlist, and active-sessions payloads)
+- Session activity: `/api/session/ping` (POST) — clients call this every 2 minutes to mark themselves active; server tracks recency per session
 
 ## Caching & Polling
 - Server polls Spotify for playback/queue on a fixed interval and stores results in memory cache.
@@ -81,6 +82,7 @@ open-playlist/
 - Autoplay state changes are broadcast in the unified stream so all clients stay in sync.
 - Clients rely on the unified stream for the initial playback/device state instead of separate one-time fetches, including autoplay on home.
 - Queue and Home no longer use separate playback/device/playlist streams; the unified stream is the only long-poll source for those updates.
+- The `activeSessions` field is included in every unified stream payload. It lists sessions active within the last 15 minutes (sorted by most-recent activity), exposing `name`, `role`, and `lastActivityAt` (no session IDs). The Home page renders this as a people-icon counter in the nav bar; clicking it opens an inline popup showing each user's name, role badge, and relative last-activity time.
 
 ## Storage
 - `storage/session_store.json`: OAuth tokens + expiry.

@@ -2298,6 +2298,111 @@ body.modal-open {
   line-height: 1.5;
 }
 
+/* Session Counter */
+.session-counter-wrapper {
+  position: relative;
+}
+
+.session-counter-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  width: auto;
+  padding: 0 0.35rem;
+}
+
+.session-counter-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 0.8rem;
+  line-height: 1;
+}
+
+.session-popup {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 200;
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow);
+  min-width: 13rem;
+  max-width: min(18rem, 90vw);
+  max-height: 60vh;
+  overflow-y: auto;
+  display: none;
+}
+
+.session-popup.is-open {
+  display: block;
+}
+
+.session-popup-header {
+  padding: 0.6rem 0.9rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.session-popup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+}
+
+.session-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.session-popup-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.session-popup-name {
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.session-popup-role {
+  font-size: 0.68rem;
+  color: var(--accent);
+  text-transform: capitalize;
+  flex-shrink: 0;
+  background: rgba(30, 215, 96, 0.12);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+}
+
+.session-popup-time {
+  font-size: 0.68rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.session-popup-empty {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* User Badge Styles (in menu bar) */
 .user-badge {
   display: none;

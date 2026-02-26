@@ -150,9 +150,3 @@ logError("Spotify API request failed", { endpoint: "/v1/me/player" }, err);
 These rules have higher priority than individual task instructions.
 If a task conflicts with these rules, ask me.
 
-## work in branches
- - Create a new Git branch for every change; never commit directly to main.
- - Branch naming: <agent-type>/<feature-description> (lowercase, hyphenated) =Examples: codex/add-login-flow, claude/fix-parser-bug.
- - Agent type (you) must be included in the branch name (e.g. codex, claude-code, copilot).
- - After completion, request a merge into main (PR or explicit merge request); do not self-merge.
-
