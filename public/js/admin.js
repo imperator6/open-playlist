@@ -6,6 +6,8 @@ const adminAccessDenied = document.getElementById("admin-access-denied");
 const adminSettingsForm = document.getElementById("admin-settings-form");
 const minAddPositionInput = document.getElementById("min-add-position-input");
 const adminSaveBtn = document.getElementById("admin-save-btn");
+const voteSortToggle = document.getElementById("admin-votesort-toggle");
+const voteSortStatus = document.getElementById("votesort-status");
 
 function setStatus(message, busy) {
   if (!adminStatus) return;
@@ -28,9 +30,38 @@ async function loadSettings() {
     if (minAddPositionInput && Number.isInteger(data.minAddPosition)) {
       minAddPositionInput.value = String(data.minAddPosition);
     }
+    if (voteSortToggle) {
+      voteSortToggle.checked = Boolean(data.voteSortEnabled);
+    }
     setStatus("");
   } catch (err) {
     setStatus("Unable to load settings.");
+  }
+}
+
+async function updateVoteSortState(enabled) {
+  if (voteSortStatus) voteSortStatus.textContent = "Saving...";
+  if (voteSortToggle) voteSortToggle.disabled = true;
+  try {
+    const res = await fetch("/api/queue/votesort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled })
+    });
+    if (!res.ok) {
+      if (voteSortStatus) voteSortStatus.textContent = "Failed to update.";
+      if (voteSortToggle) voteSortToggle.checked = !enabled;
+      return;
+    }
+    const data = await res.json();
+    if (voteSortToggle) voteSortToggle.checked = Boolean(data.voteSortEnabled);
+    if (voteSortStatus) voteSortStatus.textContent = "Saved.";
+    setTimeout(() => { if (voteSortStatus) voteSortStatus.textContent = ""; }, 2000);
+  } catch (err) {
+    if (voteSortStatus) voteSortStatus.textContent = "Unable to save.";
+    if (voteSortToggle) voteSortToggle.checked = !enabled;
+  } finally {
+    if (voteSortToggle) voteSortToggle.disabled = false;
   }
 }
 
@@ -84,6 +115,12 @@ async function initializeAdmin() {
     return;
   }
   await loadSettings();
+}
+
+if (voteSortToggle) {
+  voteSortToggle.addEventListener("change", (event) => {
+    updateVoteSortState(Boolean(event.target.checked));
+  });
 }
 
 initializeAdmin();

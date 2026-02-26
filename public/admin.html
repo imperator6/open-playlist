@@ -90,6 +90,18 @@
 
         <div id="admin-settings-form-wrap">
           <div class="panel">
+            <h2>Vote sort</h2>
+            <p class="status" id="votesort-status"></p>
+            <p class="hint">When enabled, tracks are sorted by net votes (likes minus dislikes).</p>
+            <label class="toggle" for="admin-votesort-toggle">
+              <span>Enable vote sort</span>
+              <input id="admin-votesort-toggle" type="checkbox" />
+              <span class="toggle-track" aria-hidden="true">
+                <span class="toggle-thumb"></span>
+              </span>
+            </label>
+          </div>
+          <div class="panel">
             <h2>Song insertion limit</h2>
             <p class="status" id="admin-status"></p>
             <form id="admin-settings-form">

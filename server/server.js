@@ -2129,7 +2129,8 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET") {
       return sendJson(res, 200, {
-        minAddPosition: sharedQueue.minAddPosition
+        minAddPosition: sharedQueue.minAddPosition,
+        voteSortEnabled: sharedQueue.voteSortEnabled
       });
     }
 
